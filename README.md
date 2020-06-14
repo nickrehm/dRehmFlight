@@ -14,7 +14,7 @@ Full disclosure: I am not a sotware engineer, and my code has never been perfect
 
 ### Software Setup and Working With Teensyduino
 
-### Setting up your radio connection
+### Setting Up Your Radio Connection
 
 ### Troubleshooting
 
