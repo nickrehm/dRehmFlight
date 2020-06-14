@@ -13,7 +13,5 @@ Teensy based, no BS flight controller
 
 ### Setting up your radio connection
 
-### Serial Communication with ROSserial
-
 ### Troubleshooting
 
