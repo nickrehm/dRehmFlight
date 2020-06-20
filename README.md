@@ -28,14 +28,14 @@ Code is uploaded to the board using the Arduino IDE; download the latest version
 To connect to the Teensy, you must also download and install the Teensyduino arduino add-on; download and instructions available here: https://www.pjrc.com/teensy/td_download.html
 
 
-### Hardware Setup
+## Hardware Setup
 
 
-### Software Setup and Working With Teensyduino
+## Software Setup and Working With Teensyduino
 
 
-### Setting Up Your Radio Connection
+## Setting Up Your Radio Connection
 
 
-### Troubleshooting
+## Troubleshooting
 
