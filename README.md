@@ -6,7 +6,7 @@ This project is a work in progress, and was originally developed for research ve
 
 This code is entirely free to use. If you found this helpful for your project, donations are appreciated: [Paypal Donation](https://www.paypal.me/NicholasRehm)
 
-Full disclosure: I am not a sotware engineer, and my code has never been perfect. I barely know how to use github. This code is meant to be easy to understand and follow along, NOT be highly optimized. The Teensy 4.0 board allows for some sloppy, unoptimized code to run at more than adequate speeds for our purposes, favoring unstandability over optimization. This code, while not "industry standard," should allow anyone who is technically inclined to follow along relatively easily.
+Full disclosure: I am not a software engineer, and my code has never been perfect. I barely know how to use github. This code is meant to be easy to understand and follow along, NOT be highly optimized. The Teensy 4.0 board allows for some sloppy, unoptimized code to run at more than adequate speeds for our purposes, favoring unstandability over optimization. This code, while not "industry standard," should allow anyone who is technically inclined to follow along relatively easily.
 
 
 ### Hardware Requirements
