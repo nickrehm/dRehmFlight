@@ -7,9 +7,18 @@ This project is a work in progress, and was originally developed for research ve
 Full disclosure: I am not a sotware engineer, and my code has never been perfect. I barely know how to use github. This code is meant to be easy to understand and follow along, NOT be highly optimized. The Teensy 4.0 board allows for some sloppy, unoptimized code to run at more than adequate speeds for our purposes. This code, while not "industry standard," should allow anyone who is technically inclined to follow along relatively easily.
 
 ### Hardware Requirements
+This flight controller is based off of the Teensy 4.0 microcontroller and MPU650 6DOF IMU. The following components (available on Amazon) are required to complete the flight controller assembly:
 
+Teensy 4.0: https://amzn.to/2V1q2Gw
+MPU6050 IMU: https://amzn.to/3edF1Vn
+4x6cm Proto PCB: https://amzn.to/37KGXlE
+Pin Headers: https://amzn.to/2YjU4rc
+24awg Silicone Wire: https://amzn.to/2UYX1Lq
 
 ### Software Requirments
+Code is uploaded to the board using the Arduino IDE; download the latest version here: https://www.arduino.cc/en/main/software
+
+To connect to the Teensy, you must also download and install the Teensyduino arduino add-on; download and instructions available here: https://www.pjrc.com/teensy/td_download.html
 
 ### Hardware Setup
 
