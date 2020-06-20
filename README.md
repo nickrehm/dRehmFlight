@@ -9,10 +9,15 @@ Full disclosure: I am not a sotware engineer, and my code has never been perfect
 ### Hardware Requirements
 This flight controller is based off of the Teensy 4.0 microcontroller and MPU650 6DOF IMU. The following components (available on Amazon) are required to complete the flight controller assembly:
 
+
 Teensy 4.0: https://amzn.to/2V1q2Gw
+
 MPU6050 IMU: https://amzn.to/3edF1Vn
+
 4x6cm Proto PCB: https://amzn.to/37KGXlE
+
 Pin Headers: https://amzn.to/2YjU4rc
+
 24awg Silicone Wire: https://amzn.to/2UYX1Lq
 
 ### Software Requirments
