@@ -39,3 +39,8 @@ To connect to the Teensy, you must also download and install the Teensyduino ard
 
 ## Troubleshooting
 
+
+## FAQ
+**Q: Why is it named 'dRehmFlight'?**
+
+**A:** Because I wrote it so I get to name it what I want.
