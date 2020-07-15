@@ -41,8 +41,14 @@ To connect to the Teensy, you must also download and install the Teensyduino ard
 
 ## Troubleshooting
 
+## Disclaimer
+This code is a shared, open source flight controller for small micro aerial vehicles and is intended to be modified to suit your needs. It is NOT intended to be used on manned vehicles. I do not claim any responsibility for any damage or injury that may be inflicted as a result of the use of this code. Use and modify at your own risk.
 
 ## FAQ
 **Q: Why is it named 'dRehmFlight'?**
 
 **A:** Because I wrote it so I get to name it what I want.
+
+**Q: Where is the rest of the documentation?**
+
+**A:** I am working on it.
