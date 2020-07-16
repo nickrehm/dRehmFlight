@@ -34,6 +34,7 @@ To connect to the Teensy, you must also download and install the Teensyduino ard
 
 
 ## Software Setup and Working With Teensyduino
+Download the latest version in the 'versions' folder and keep within the named folder (arduino requires that sketches are stored in folders with the same name). 
 
 
 ## Setting Up Your Radio Connection
