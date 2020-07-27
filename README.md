@@ -10,7 +10,7 @@ Full disclosure: I am not a software engineer, and my code has never been perfec
 
 
 ### Hardware Requirements
-This flight controller is based off of the Teensy 4.0 microcontroller and MPU650 6DOF IMU. The following components (available on Amazon) are required to complete the flight controller assembly:
+This flight controller is based off of the Teensy 4.0 microcontroller and MPU6050 6DOF IMU. The following components (available on Amazon) are required to complete the flight controller assembly:
 
 
 **Teensy 4.0**: https://amzn.to/2V1q2Gw
