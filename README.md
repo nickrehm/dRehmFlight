@@ -44,9 +44,13 @@ Download the latest version in the 'versions' folder and keep within the named f
 
 ## Videos
 dRehmflight has been successfully implemented on the following platforms:
+
 **Autonomous Quadrotor:** https://www.youtube.com/watch?v=GZLUbTSWPI8
+
 **Quadrotor Biplane VTOL:** https://www.youtube.com/watch?v=rk4tUKM6bd0
+
 **Dual Cyclocopter MAV:** https://www.youtube.com/watch?v=uP87-yU1l6I
+
 **VTOL F-35 Tricopter:** https://www.youtube.com/watch?v=Ds-ODWydxeY&
 
 
