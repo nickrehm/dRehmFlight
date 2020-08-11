@@ -42,6 +42,14 @@ Download the latest version in the 'versions' folder and keep within the named f
 
 ## Troubleshooting
 
+## Videos
+dRehmflight has been successfully implemented on the following platforms:
+**Autonomous Quadrotor:** https://www.youtube.com/watch?v=GZLUbTSWPI8
+**Quadrotor Biplane VTOL:** https://www.youtube.com/watch?v=rk4tUKM6bd0
+**Dual Cyclocopter MAV:** https://www.youtube.com/watch?v=uP87-yU1l6I
+**VTOL F-35 Tricopter:** https://www.youtube.com/watch?v=Ds-ODWydxeY&
+
+
 ## Disclaimer
 This code is a shared, open source flight controller for small micro aerial vehicles and is intended to be modified to suit your needs. It is NOT intended to be used on manned vehicles. I do not claim any responsibility for any damage or injury that may be inflicted as a result of the use of this code. Use and modify at your own risk.
 
