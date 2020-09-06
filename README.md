@@ -1,5 +1,5 @@
 # dRehmFlight VTOL
-Teensy based, no BS flight controller for all types of VTOL and multirotor platforms.
+No-BS Teensy Flight Controller and Stabilization
 
 ## Overview
 This project is a work in progress, and was originally developed for research vehicle platforms at the University of Maryland Alfred Gessow Rotorcraft Center.
