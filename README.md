@@ -1,6 +1,3 @@
-# dRehmFlight VTOL
-Teensy Flight Controller and Stabilization
-
 ![dRehmFlight Logo](https://github.com/nickrehm/dRehmFlight/blob/master/dRehmFlight%20Logo.png)
 
 ## Overview
