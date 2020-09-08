@@ -1,6 +1,8 @@
 # dRehmFlight VTOL
 Teensy Flight Controller and Stabilization
 
+(https://github.com/nickrehm/dRehmFlight/blob/master/dRehmFlight%20Logo.png)
+
 ## Overview
 This project is a work in progress, and was originally developed for research vehicle platforms at the University of Maryland Alfred Gessow Rotorcraft Center.
 
