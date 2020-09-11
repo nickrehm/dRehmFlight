@@ -1,7 +1,7 @@
 ![dRehmFlight Logo](https://github.com/nickrehm/dRehmFlight/blob/master/dRehmFlight%20Logo.png)
 
 ## Overview
-This project is a work in progress, and was originally developed for research vehicle platforms at the University of Maryland Alfred Gessow Rotorcraft Center.
+This project is a work in progress, and was originally developed for research vehicle platforms at the University of Maryland Alfred Gessow Rotorcraft Center. Current Version: Beta 1.1.
 
 dRehmFlight is a simple flight controller intended for all types of vertical takeoff and landing (VTOL) vehicles from simple multirotors to more complex transitioning vehicles. This flight controller software and hardware package was developed with people in mind who may not be particularly fluent in object-oriented programming. The goal is to have an easy to understand flow of discrete operations that allows anyone with basic knowledge of coding in C/Arduino to peer into the code, make the changes they need for their specific application, and quickly have something flying. It is assumed that anyone using this code has previous experience building and flying model aircraft and is familiar with basic RC technology and terminology. The Teensy 4.0 board used for dRehmFlight is an extremely powerful microcontroller that allows for understandable code to run at very high speeds: perfect for a hobby-level flight controller. 
 
