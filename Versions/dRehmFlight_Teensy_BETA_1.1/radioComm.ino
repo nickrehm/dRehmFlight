@@ -91,15 +91,15 @@ void getPPM() {
     }
   
     if (ppm_counter == 1) { //first pulse
-      channel_2_raw = dt_ppm;
+      channel_1_raw = dt_ppm;
     }
   
     if (ppm_counter == 2) { //second pulse
-      channel_3_raw = dt_ppm;
+      channel_2_raw = dt_ppm;
     }
   
     if (ppm_counter == 3) { //third pulse
-      channel_1_raw = dt_ppm;
+      channel_3_raw = dt_ppm;
     }
   
     if (ppm_counter == 4) { //fourth pulse
@@ -107,11 +107,11 @@ void getPPM() {
     }
   
     if (ppm_counter == 5) { //fifth pulse
-      channel_6_raw = dt_ppm;
+      channel_5_raw = dt_ppm;
     }
   
     if (ppm_counter == 6) { //sixth pulse
-      channel_5_raw = dt_ppm;
+      channel_6_raw = dt_ppm;
     }
     
     ppm_counter = ppm_counter + 1;
