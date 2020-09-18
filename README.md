@@ -30,8 +30,11 @@ Code is uploaded to the board using the Arduino IDE; download the latest version
 To connect to the Teensy, you must also download and install the Teensyduino arduino add-on; download and instructions available here: https://www.pjrc.com/teensy/td_download.html
 
 
+## Tutorial Videos
+[Building the Flight Controller Hardware](https://www.youtube.com/watch?v=EBXBEB-Xv7w&)
 
-## Videos
+
+## Flight Videos
 dRehmflight has been successfully implemented on the following platforms:
 
 **Autonomous Quadrotor:** https://www.youtube.com/watch?v=GZLUbTSWPI8
