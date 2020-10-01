@@ -1,0 +1,12 @@
+SBUS	KEYWORD1
+begin	KEYWORD2
+read	KEYWORD2
+readCal	KEYWORD2
+write	KEYWORD2
+writeCal	KEYWORD2
+setEndPoints	KEYWORD2
+getEndPoints	KEYWORD2
+setReadCal	KEYWORD2
+getReadCal	KEYWORD2
+setWriteCal	KEYWORD2
+getWriteCal	KEYWORD2
