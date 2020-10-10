@@ -23,6 +23,7 @@ This flight controller is based off of the Teensy 4.0 microcontroller and MPU605
 
 **GY-521 MPU6050 IMU**: https://amzn.to/3edF1Vn
 
+These (and all Amazon links contained within the supporting documentation) are Amazon Affiliate links; by purchasing from these, I receive a small portion of the revenue at no cost to you. I appreciate any and all support!
 
 ### Software Requirments
 Code is uploaded to the board using the Arduino IDE; download the latest version here: https://www.arduino.cc/en/main/software
