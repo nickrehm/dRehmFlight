@@ -72,21 +72,21 @@ RcGroups 'jihlein' - IMU implementation overhaul + SBUS implementation
 
 
 
-//REQUIRED LIBRARIES
+//REQUIRED LIBRARIES (included with download in main sketch folder)
 
 #include <Wire.h>     //I2c communication
 #include <SPI.h>      //SPI communication
 #include <PWMServo.h> //commanding any extra actuators, installed with teensyduino installer
 
 #if defined USE_SBUS_RX
-  #include <SBUS.h>   //sBus interface
+  #include "src/SBUS/SBUS.h"   //sBus interface
 #endif
 
 #if defined USE_MPU6050_I2C
-  #include <MPU6050.h>
+  #include "src/MPU6050/MPU6050.h"
   MPU6050 mpu6050;
 #elif defined USE_MPU9250_SPI
-  #include <MPU9250.h>
+  #include "src/MPU9250/MPU9250.h"
   MPU9250 mpu9250(SPI2,36);
 #else
   #error No MPU defined... 
