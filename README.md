@@ -34,6 +34,8 @@ To connect to the Teensy, you must also download and install the Teensyduino ard
 ## Tutorial Videos
 [Building the Flight Controller Hardware](https://www.youtube.com/watch?v=EBXBEB-Xv7w&)
 
+[Setting Up Your Radio Connection](https://www.youtube.com/watch?v=Wdc1o6eSsMo)
+
 
 ## Flight Videos
 dRehmflight has been successfully implemented on the following platforms:
