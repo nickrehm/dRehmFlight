@@ -125,7 +125,7 @@ RcGroups 'jihlein' - IMU implementation overhaul + SBUS implementation
   #define GYRO_SCALE_FACTOR 131.0
 #elif defined GYRO_500DPS
   #define GYRO_SCALE GYRO_FS_SEL_500
-  #define GRYO_SCALE_FACTOR 65.5
+  #define GYRO_SCALE_FACTOR 65.5
 #elif defined GYRO_1000DPS
   #define GYRO_SCALE GYRO_FS_SEL_1000
   #define GYRO_SCALE_FACTOR 32.8
