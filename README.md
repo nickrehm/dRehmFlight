@@ -48,6 +48,10 @@ dRehmflight has been successfully implemented on the following platforms:
 
 **VTOL F-35 Tricopter:** https://www.youtube.com/watch?v=Ds-ODWydxeY&
 
+**Model SpaceX Starhopper:** https://www.youtube.com/watch?v=VsyFejn40Ss
+
+**Model SpaceX Starship:** https://www.youtube.com/watch?v=5lwH7xJnB4I
+
 
 ## Disclaimer
 This code is a shared, open source flight controller for small micro aerial vehicles and is intended to be modified to suit your needs. It is NOT intended to be used on manned vehicles. I do not claim any responsibility for any damage or injury that may be inflicted as a result of the use of this code. Use and modify at your own risk. More specifically put:
