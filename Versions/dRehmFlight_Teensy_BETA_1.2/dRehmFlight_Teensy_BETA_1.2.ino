@@ -1070,7 +1070,7 @@ void controlMixer() {
   if (channel_6_pwm > 1500){ //go to max specified value in 5.5 seconds
     Kp_pitch_rate = floatFaderLinear(Kp_pitch_rate, 0.1, 0.3, 5.5, 1, 2000); //parameter, minimum value, maximum value, fadeTime (seconds), state (0 min or 1 max), loop frequency
   }
-  else if (channel_6_pwm < 1500) { //go to min specified value in 2.5 seconds
+  if (channel_6_pwm < 1500) { //go to min specified value in 2.5 seconds
     Kp_pitch_rate = floatFaderLinear(Kp_pitch_rate, 0.1, 0.3, 2.5, 0, 2000); //parameter, minimum value, maximum value, fadeTime, state (0 min or 1 max), loop frequency
   }
   */
