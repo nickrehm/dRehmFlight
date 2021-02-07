@@ -36,6 +36,9 @@ To connect to the Teensy, you must also download and install the Teensyduino ard
 
 [Setting Up Your Radio Connection](https://www.youtube.com/watch?v=Wdc1o6eSsMo)
 
+[Mounting and Configuring the IMU](https://www.youtube.com/watch?v=pi4PiBFPt70)
+
+[How the Flight Controller Code Works](https://www.youtube.com/watch?v=_n5GBudUf5Q&lc=UgwvXX18w7FtJH1ClLl4AaABAg)
 
 ## Flight Videos
 dRehmflight has been successfully implemented on the following platforms:
