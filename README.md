@@ -55,6 +55,8 @@ dRehmflight has been successfully implemented on the following platforms:
 
 **Model SpaceX Starship:** https://www.youtube.com/watch?v=5lwH7xJnB4I
 
+I would love to see your flying creations and maybe feature them here as well. Please email me at nrehm@umd.edu with any videos/pics of your project. -Nick Rehm
+
 
 ## Disclaimer
 This code is a shared, open source flight controller for small micro aerial vehicles and is intended to be modified to suit your needs. It is NOT intended to be used on manned vehicles. I do not claim any responsibility for any damage or injury that may be inflicted as a result of the use of this code. Use and modify at your own risk. More specifically put:
