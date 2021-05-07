@@ -1,5 +1,7 @@
 ![dRehmFlight Logo](https://github.com/nickrehm/dRehmFlight/blob/master/dRehmFlight%20Logo.png)
 
+[![Hits](https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https%3A%2F%2Fgithub.com%2Fnickrehm%2FdRehmFlight&count_bg=%23E30F0F&title_bg=%23555555&icon=&icon_color=%23E7E7E7&title=hits&edge_flat=false)](https://hits.seeyoufarm.com)
+
 [Intro Video](https://www.youtube.com/watch?v=tlD0C5CrWcA&lc=Ugx6m02xjHk8QH19vd94AaABAg)
 
 [RcGroups Support Thread](https://www.rcgroups.com/forums/showthread.php?3706571-dRehmFlight-VTOL-Teensy-Flight-Controller-and-Stabilization)
