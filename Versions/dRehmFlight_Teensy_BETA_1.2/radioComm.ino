@@ -7,13 +7,13 @@
 
 //This file contains all necessary functions and code used for radio communication to avoid cluttering the main code
 
-unsigned long rising_edge_start_1, rising_edge_start_2, rising_edge_start_3, rising_edge_start_4, rising_edge_start_5, rising_edge_start_6; 
+unsigned long rising_edge_start_1, rising_edge_start_2, rising_edge_start_3, rising_edge_start_4, rising_edge_start_5, rising_edge_start_6;
 unsigned long channel_1_raw, channel_2_raw, channel_3_raw, channel_4_raw, channel_5_raw, channel_6_raw;
 int ppm_counter = 0;
 unsigned long time_ms = 0;
 
 void radioSetup() {
-  //PPM Receiver 
+  //PPM Receiver
   #if defined USE_PPM_RX
     //Declare interrupt pin
     pinMode(PPM_Pin, INPUT_PULLUP);
@@ -23,7 +23,7 @@ void radioSetup() {
 
   //PWM Receiver
   #elif defined USE_PWM_RX
-    //Declare interrupt pins 
+    //Declare interrupt pins
     pinMode(ch1Pin, INPUT_PULLUP);
     pinMode(ch2Pin, INPUT_PULLUP);
     pinMode(ch3Pin, INPUT_PULLUP);
@@ -40,19 +40,23 @@ void radioSetup() {
     attachInterrupt(digitalPinToInterrupt(ch6Pin), getCh6, CHANGE);
     delay(20);
 
-  //SBUS Recevier 
+  //SBUS Recevier
   #elif defined USE_SBUS_RX
     sbus.begin();
-    
+
+  //IBUS Recevier
+    #elif defined USE_IBUS_RX
+      ibus.begin(Serial5, IBUSBM_NOTIMER);
+
   #else
     #error No RX type defined...
   #endif
 }
 
 unsigned long getRadioPWM(int ch_num) {
-  //DESCRIPTION: Get current radio commands from interrupt routines 
+  //DESCRIPTION: Get current radio commands from interrupt routines
   unsigned long returnPWM;
-  
+
   if (ch_num == 1) {
     returnPWM = channel_1_raw;
   }
@@ -71,7 +75,7 @@ unsigned long getRadioPWM(int ch_num) {
   else if (ch_num == 6) {
     returnPWM = channel_6_raw;
   }
-  
+
   return returnPWM;
 }
 
@@ -90,35 +94,35 @@ void getPPM() {
     dt_ppm = micros() - time_ms;
     time_ms = micros();
 
-    
+
     if (dt_ppm > 5000) { //waiting for long pulse to indicate a new pulse train has arrived
       ppm_counter = 0;
     }
-  
+
     if (ppm_counter == 1) { //first pulse
       channel_1_raw = dt_ppm;
     }
-  
+
     if (ppm_counter == 2) { //second pulse
       channel_2_raw = dt_ppm;
     }
-  
+
     if (ppm_counter == 3) { //third pulse
       channel_3_raw = dt_ppm;
     }
-  
+
     if (ppm_counter == 4) { //fourth pulse
       channel_4_raw = dt_ppm;
     }
-  
+
     if (ppm_counter == 5) { //fifth pulse
       channel_5_raw = dt_ppm;
     }
-  
+
     if (ppm_counter == 6) { //sixth pulse
       channel_6_raw = dt_ppm;
     }
-    
+
     ppm_counter = ppm_counter + 1;
   }
 }
