@@ -18,9 +18,13 @@ This flight controller is based off of the Teensy 4.0 microcontroller and MPU605
 
 
 **Teensy 4.0**: https://amzn.to/3oFG3QN
+
 **Alternative Links**:
+
 [Sparkfun](https://www.sparkfun.com/products/15583)
+
 [Adafruit](https://www.adafruit.com/product/4323)
+
 [Electromaker](https://www.electromaker.io/shop/product/teensy-40?gclid=Cj0KCQjwxIOXBhCrARIsAL1QFCYcZsU4tRXVgeqfOOJyg_zPV2MXTeJM2QwJ6zafMTsCb6MjWthk7r8aAn6hEALw_wcB)
 
 
