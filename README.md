@@ -41,6 +41,8 @@ To connect to the Teensy, you must also download and install the Teensyduino ard
 
 [How the Flight Controller Code Works](https://www.youtube.com/watch?v=_n5GBudUf5Q&lc=UgwvXX18w7FtJH1ClLl4AaABAg)
 
+[Building and Coding an RC F-35 VTOL](https://www.youtube.com/watch?v=RqdcZD0ZoUk)
+
 ## Flight Videos
 dRehmflight has been successfully implemented on the following platforms:
 
