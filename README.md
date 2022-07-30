@@ -12,6 +12,15 @@ dRehmFlight has been used as a teaching tool for aircraft stabilization and flig
 
 This code is entirely free to use and will stay that way forever. If you found this helpful for your project, donations are appreciated: [Paypal Donation](https://www.paypal.me/NicholasRehm)
 
+**New in Beta 1.3:**
+
+- Spektrum DSM Satellite RX Support
+- One-time IMU calibration
+- ESC calibration functionality
+- Motor arming bug fix
+- Code and comment clean up
+- Small bug fixes
+
 
 ### Hardware Requirements
 This flight controller is based off of the Teensy 4.0 microcontroller and MPU6050 6DOF IMU. The following components (available on Amazon) are required to complete the flight controller assembly:
