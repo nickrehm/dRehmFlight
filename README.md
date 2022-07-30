@@ -71,7 +71,7 @@ dRehmflight has been successfully implemented on the following platforms:
 
 **Fixed Wing Ground Effect Vehicle:** https://www.youtube.com/watch?v=uaY2G5Kbj_g
 
-**Spinning Tricopter VTOL:** https://www.youtube.com/watch?v=uaY2G5Kbj_g
+**Spinning Tricopter VTOL:** https://www.youtube.com/watch?v=7JH1_ZKV7t4
 
 **Model Joby EVTOL:** https://www.youtube.com/watch?v=Dd2N_lyO_SQ
 
