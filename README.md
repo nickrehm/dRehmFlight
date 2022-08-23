@@ -83,6 +83,8 @@ dRehmflight has been successfully implemented on the following platforms:
 
 **Tail-less Albatross:** https://www.youtube.com/watch?v=1ifR_cvjpjk
 
+**Bicopter VTOL:** https://www.youtube.com/watch?v=XPXN0QejqM0
+
 
 I would love to see your flying creations and maybe feature them here as well. Please email me at NicholasRehmYT@gmail.com with any videos/pics of your project. -Nick Rehm
 
