@@ -1124,13 +1124,13 @@ void scaleCommands() {
   m6_command_PWM = constrain(m6_command_PWM, 125, 250);
 
   //Scaled to 0-180 for servo library
-  s1_command_PWM = s1_command_scaled*180;
-  s2_command_PWM = s2_command_scaled*180;
-  s3_command_PWM = s3_command_scaled*180;
-  s4_command_PWM = s4_command_scaled*180;
-  s5_command_PWM = s5_command_scaled*180;
-  s6_command_PWM = s6_command_scaled*180;
-  s7_command_PWM = s7_command_scaled*180;
+  s1_command_PWM = 90 + (s1_command_scaled*90);
+  s2_command_PWM = 90 + (s2_command_scaled*90);
+  s3_command_PWM = 90 + (s3_command_scaled*90);
+  s4_command_PWM = 90 + (s4_command_scaled*90);
+  s5_command_PWM = 90 + (s5_command_scaled*90);
+  s6_command_PWM = 90 + (s6_command_scaled*90);
+  s7_command_PWM = 90 + (s7_command_scaled*90);
   //Constrain commands to servos within servo library bounds
   s1_command_PWM = constrain(s1_command_PWM, 0, 180);
   s2_command_PWM = constrain(s2_command_PWM, 0, 180);
