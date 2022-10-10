@@ -868,15 +868,20 @@ void getIMUdata()
    * the readings. The filter parameters B_gyro and B_accel are set to be good for a 2kHz loop rate. Finally,
    * the constant errors found in calculate_IMU_error() on startup are subtracted from the accelerometer and gyro readings.
    */
-  int16_t AcX, AcY, AcZ, GyX, GyY, GyZ;
-  int16_t MgX = 0;
-  int16_t MgY = 0;
-  int16_t MgZ = 0;
+  int16_t AcX, AcY, AcZ, GyX, GyY, GyZ, MgX = 0, MgY = 0, MgZ = 0;
 
 #if defined USE_MPU6050_I2C
   mpu6050.getMotion6(&AcX, &AcY, &AcZ, &GyX, &GyY, &GyZ);
 #elif defined USE_MPU9250_SPI
-  mpu9250.getMotion9(&AcX, &AcY, &AcZ, &GyX, &GyY, &GyZ, &MgX, &MgY, &MgZ);
+  AcX = mpu9250.getAccelX_mss();
+  AcY = mpu9250.getAccelY_mss();
+  AcZ = mpu9250.getAccelZ_mss();
+  GyX = mpu9250.getGyroX_rads();
+  GyY = mpu9250.getGyroY_rads();
+  GyZ = mpu9250.getGyroZ_rads();
+  MgX = mpu9250.getMagX_uT();
+  MgY = mpu9250.getMagY_uT();
+  MgZ = mpu9250.getMagZ_uT();
 #endif
 
   // Accelerometer
@@ -945,7 +950,12 @@ void calculate_IMU_error()
 #if defined USE_MPU6050_I2C
     mpu6050.getMotion6(&AcX, &AcY, &AcZ, &GyX, &GyY, &GyZ);
 #elif defined USE_MPU9250_SPI
-    mpu9250.getMotion9(&AcX, &AcY, &AcZ, &GyX, &GyY, &GyZ, &MgX, &MgY, &MgZ);
+    AcX = mpu9250.getAccelX_mss();
+    AcY = mpu9250.getAccelY_mss();
+    AcZ = mpu9250.getAccelZ_mss();
+    GyX = mpu9250.getGyroX_rads();
+    GyY = mpu9250.getGyroY_rads();
+    GyZ = mpu9250.getGyroZ_rads();
 #endif
 
     AccX = AcX / ACCEL_SCALE_FACTOR;
