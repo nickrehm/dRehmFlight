@@ -36,7 +36,7 @@ Thank you to:
 // Uncomment only one receiver type
 #define USE_PWM_RX
 // #define USE_PPM_RX
-// define USE_SBUS_RX
+// #define USE_SBUS_RX
 // #define USE_DSM_RX
 
 static const uint8_t num_DSM_channels = 6; // If using DSM RX, change this to match the number of transmitter channels you have
@@ -122,7 +122,7 @@ float Kd_yaw = 0.00015; // Yaw D-gain (be careful when increasing too high, moto
 #pragma region Conditional_Includes
 
 #if defined USE_SBUS_RX
-#include "SBUS.h" // sBus interface
+#include "sbus.h" // sBus interface
 #endif
 
 #if defined USE_DSM_RX
