@@ -468,10 +468,10 @@ void controlMixer() {
    */
    
   //Quad mixing - EXAMPLE
-  m1_command_scaled = thro_des - pitch_PID + roll_PID + yaw_PID; //Front left
-  m2_command_scaled = thro_des - pitch_PID - roll_PID - yaw_PID; //Front right
+  m1_command_scaled = thro_des - pitch_PID + roll_PID + yaw_PID; //Front Left
+  m2_command_scaled = thro_des - pitch_PID - roll_PID - yaw_PID; //Front Right
   m3_command_scaled = thro_des + pitch_PID - roll_PID + yaw_PID; //Back Right
-  m4_command_scaled = thro_des + pitch_PID + roll_PID - yaw_PID; //Back Right
+  m4_command_scaled = thro_des + pitch_PID + roll_PID - yaw_PID; //Back Left
   m5_command_scaled = 0;
   m6_command_scaled = 0;
 
