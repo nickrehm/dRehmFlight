@@ -37,6 +37,9 @@ Everyone that sends me pictures and videos of your flying creations! -Nick
 //#define USE_DSM_RX
 static const uint8_t num_DSM_channels = 6; //If using DSM RX, change this to match the number of transmitter channels you have
 
+//Define how many SBUS missing frames are required to trigger failsafe
+#define FS_MAXCOUNT 1000
+
 //Uncomment only one IMU
 #define USE_MPU6050_I2C //Default
 //#define USE_MPU9250_SPI
@@ -298,7 +301,9 @@ int m1_command_PWM, m2_command_PWM, m3_command_PWM, m4_command_PWM, m5_command_P
 float s1_command_scaled, s2_command_scaled, s3_command_scaled, s4_command_scaled, s5_command_scaled, s6_command_scaled, s7_command_scaled;
 int s1_command_PWM, s2_command_PWM, s3_command_PWM, s4_command_PWM, s5_command_PWM, s6_command_PWM, s7_command_PWM;
 
-
+//SBUS failsafe
+bool isFailsafe = true; 
+unsigned int countFailsafe = FS_MAXCOUNT; 
 
 //========================================================================================================================//
 //                                                      VOID SETUP                                                        //                           
@@ -1171,8 +1176,14 @@ void getCommands() {
       channel_4_pwm = sbusChannels[3] * scale + bias;
       channel_5_pwm = sbusChannels[4] * scale + bias;
       channel_6_pwm = sbusChannels[5] * scale + bias; 
+      if ((sbusLostFrame || sbusFailSafe) && countFailsafe<FS_MAXCOUNT) countFailsafe++;
+      else {
+        countFailsafe=0;
+      }
+    } else {
+      if (countFailsafe<FS_MAXCOUNT) countFailsafe++;
     }
-
+  
   #elif defined USE_DSM_RX
     if (DSM.timedOut(micros())) {
         //Serial.println("*** DSM RX TIMED OUT ***");
@@ -1229,13 +1240,16 @@ void failSafe() {
   if (channel_6_pwm > maxVal || channel_6_pwm < minVal) check6 = 1;
 
   //If any failures, set to default failsafe values
-  if ((check1 + check2 + check3 + check4 + check5 + check6) > 0) {
+  if ((check1 + check2 + check3 + check4 + check5 + check6) > 0 || countFailsafe>=FS_MAXCOUNT) {
+    isFailsafe=true;
     channel_1_pwm = channel_1_fs;
     channel_2_pwm = channel_2_fs;
     channel_3_pwm = channel_3_fs;
     channel_4_pwm = channel_4_fs;
     channel_5_pwm = channel_5_fs;
     channel_6_pwm = channel_6_fs;
+  } else {
+     isFailsafe=false;
   }
 }
 
@@ -1529,12 +1543,12 @@ void loopBlink() {
    */
   if (current_time - blink_counter > blink_delay) {
     blink_counter = micros();
-    digitalWrite(13, blinkAlternate); //Pin 13 is built in LED
+    digitalWrite(13, blinkAlternate || isFailsafe); //Pin 13 is built in LED
     
     if (blinkAlternate == 1) {
       blinkAlternate = 0;
       blink_delay = 100000;
-      }
+  }
     else if (blinkAlternate == 0) {
       blinkAlternate = 1;
       blink_delay = 2000000;
@@ -1555,6 +1569,10 @@ void setupBlink(int numBlinks,int upTime, int downTime) {
 void printRadioData() {
   if (current_time - print_counter > 10000) {
     print_counter = micros();
+    Serial.print(F(" FS: "));
+    Serial.print(isFailsafe);
+    Serial.print(F(" FsCount: "));
+    Serial.print(countFailsafe);
     Serial.print(F(" CH1: "));
     Serial.print(channel_1_pwm);
     Serial.print(F(" CH2: "));
