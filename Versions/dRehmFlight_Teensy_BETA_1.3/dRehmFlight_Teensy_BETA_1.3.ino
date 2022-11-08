@@ -607,6 +607,12 @@ void calculate_IMU_error() {
    * measurement. 
    */
   int16_t AcX,AcY,AcZ,GyX,GyY,GyZ,MgX,MgY,MgZ;
+  AccErrorX = 0.0;
+  AccErrorY = 0.0;
+  AccErrorZ = 0.0;
+  GyroErrorX = 0.0;
+  GyroErrorY= 0.0;
+  GyroErrorZ = 0.0;
   
   //Read IMU values 12000 times
   int c = 0;
