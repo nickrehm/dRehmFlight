@@ -30,6 +30,7 @@ Everyone that sends me pictures and videos of your flying creations! -Nick
 //                                                 USER-SPECIFIED DEFINES                                                 //                                                                 
 //========================================================================================================================//
 
+
 //Uncomment only one receiver type
 //#define USE_PWM_RX
 //#define USE_PPM_RX
@@ -168,12 +169,12 @@ float MagScaleY = 1.0;
 float MagScaleZ = 1.0;
 
 //IMU calibration parameters - calibrate IMU using calculate_IMU_error() in the void setup() to get these values, then comment out calculate_IMU_error()
-float AccErrorX = 0.0;
-float AccErrorY = 0.0;
-float AccErrorZ = 0.0;
-float GyroErrorX = 0.0;
-float GyroErrorY= 0.0;
-float GyroErrorZ = 0.0;
+float AccErrorX = 0.09;
+float AccErrorY = -0.04;
+float AccErrorZ = -0.04;
+float GyroErrorX = -3.15;
+float GyroErrorY= -0.52;
+float GyroErrorZ = -0.03;
 
 //Controller parameters (take note of defaults before modifying!): 
 float i_limit = 25.0;     //Integrator saturation level, mostly for safety (default 25.0)
@@ -201,6 +202,27 @@ float Kp_yaw = 0.3;           //Yaw P-gain
 float Ki_yaw = 0.05;          //Yaw I-gain
 float Kd_yaw = 0.00015;       //Yaw D-gain (be careful when increasing too high, motors will begin to overheat!)
 
+int xCounts;        // Joystick x-axis rotation analog signal
+int xCounts_min = 172; 	// Analog int of maximum x-axis analog signal
+int xCounts_max = 1021;  	// Analog int of minimum x-axis analog signal
+int yCounts;        // Joystick y-axis rotation analog signal
+int yCounts_min = 194; 	// Analog int of maximum y-axis analog signal
+int yCounts_max = 915;  	// Analog int of minimum y-axis analog signal
+
+float xAngle;       // Joystick x-axis rotation angle
+float xAngle_min = -30;   // Minimum xAngle
+float xAngle_max = 30;   // Maximum xAngle
+float yAngle;       // Joystick x-axis rotation angle
+float yAngle_min = -30;   // Minimum xAngle
+float yAngle_max = 30;   // Maximum xAngle
+
+// Controller parameters for joystick
+float Kp_xAngle = 0.2; 		// xAngle P-gain
+float Ki_xAngle = 0.3; 		// xAngle I-gain
+float Kd_xAngle = 0.05;  	// xAngle D-gain
+float Kp_yAngle = 0.2; 		// yAngle P-gain
+float Ki_yAngle = 0.3; 		// yAngle I-gain
+float Kd_yAngle = 0.05; 	// yAngle D-gain
 
 
 //========================================================================================================================//
@@ -232,6 +254,15 @@ const int servo4Pin = 9;
 const int servo5Pin = 8;
 const int servo6Pin = 11;
 const int servo7Pin = 12;
+
+// Joystick pins
+const int joyXPin = 40;
+const int joyYPin = 41;
+
+// Pin and object for iris servo:
+const int irisPin = 24;
+PWMServo iris;
+
 PWMServo servo1;  //Create servo objects to control a servo or ESC with PWM
 PWMServo servo2;
 PWMServo servo3;
@@ -286,17 +317,26 @@ float q3 = 0.0f;
 //Normalized desired state:
 float thro_des, roll_des, pitch_des, yaw_des;
 float roll_passthru, pitch_passthru, yaw_passthru;
+float xAngle_des, yAngle_des;
 
 //Controller:
 float error_roll, error_roll_prev, roll_des_prev, integral_roll, integral_roll_il, integral_roll_ol, integral_roll_prev, integral_roll_prev_il, integral_roll_prev_ol, derivative_roll, roll_PID = 0;
 float error_pitch, error_pitch_prev, pitch_des_prev, integral_pitch, integral_pitch_il, integral_pitch_ol, integral_pitch_prev, integral_pitch_prev_il, integral_pitch_prev_ol, derivative_pitch, pitch_PID = 0;
 float error_yaw, error_yaw_prev, integral_yaw, integral_yaw_prev, derivative_yaw, yaw_PID = 0;
+float error_xAngle, error_xAngle_prev, integral_xAngle, integral_xAngle_prev, derivative_xAngle, xAngle_PID = 0;
+float error_yAngle, error_yAngle_prev, integral_yAngle, integral_yAngle_prev, derivative_yAngle, yAngle_PID = 0;
 
 //Mixer
 float m1_command_scaled, m2_command_scaled, m3_command_scaled, m4_command_scaled, m5_command_scaled, m6_command_scaled;
 int m1_command_PWM, m2_command_PWM, m3_command_PWM, m4_command_PWM, m5_command_PWM, m6_command_PWM;
 float s1_command_scaled, s2_command_scaled, s3_command_scaled, s4_command_scaled, s5_command_scaled, s6_command_scaled, s7_command_scaled;
 int s1_command_PWM, s2_command_PWM, s3_command_PWM, s4_command_PWM, s5_command_PWM, s6_command_PWM, s7_command_PWM;
+
+// Flag for whether or not Iris is open
+bool irisFlag = 0;
+
+// User input value for the setDesState() function
+float serialInputValue = 0;
 
 
 
@@ -323,6 +363,9 @@ void setup() {
   servo5.attach(servo5Pin, 900, 2100);
   servo6.attach(servo6Pin, 900, 2100);
   servo7.attach(servo7Pin, 900, 2100);
+
+	// Attach the iris servo and close it
+	iris.attach(irisPin);
 
   //Set built in LED to turn on to signal startup
   digitalWrite(13, HIGH);
@@ -362,6 +405,9 @@ void setup() {
   //calibrateESCs(); //PROPS OFF. Uncomment this to calibrate your ESCs by setting throttle stick to max, powering on, and lowering throttle to zero after the beeps
   //Code will not proceed past here if this function is uncommented!
 
+	// Calibrate the joystick. Will be in an infinite loop.
+	//calibrateJoystick();
+
   //Arm OneShot125 motors
   m1_command_PWM = 125; //Command OneShot125 ESC from 125 to 250us pulse length
   m2_command_PWM = 125;
@@ -394,7 +440,7 @@ void loop() {
 
   //Print data at 100hz (uncomment one at a time for troubleshooting) - SELECT ONE:
   //printRadioData();     //Prints radio pwm values (expected: 1000 to 2000)
-  //printDesiredState();  //Prints desired vehicle state commanded in either degrees or deg/sec (expected: +/- maxAXIS for roll, pitch, yaw; 0 to 1 for throttle)
+  printDesiredState();  //Prints desired vehicle state commanded in either degrees or deg/sec (expected: +/- maxAXIS for roll, pitch, yaw; 0 to 1 for throttle)
   //printGyroData();      //Prints filtered gyro data direct from IMU (expected: ~ -250 to 250, 0 at rest)
   //printAccelData();     //Prints filtered accelerometer data direct from IMU (expected: ~ -2 to 2; x,y 0 when level, z 1 when level)
   //printMagData();       //Prints filtered magnetometer data direct from IMU (expected: ~ -300 to 300)
@@ -404,15 +450,26 @@ void loop() {
   //printServoCommands(); //Prints the values being written to the servos (expected: 0 to 180)
   //printLoopRate();      //Prints the time between loops in microseconds (expected: microseconds between loop iterations)
 
+	// Chechk for whether or not the iris should be open
+	if (channel_6_pwm < 1500) {
+		irisFlag = 0;
+		closeIris();
+	}
+	else {
+		irisFlag = 1;
+		openIris();
+	}
+
   //Get vehicle state
   getIMUdata(); //Pulls raw gyro, accelerometer, and magnetometer data from IMU and LP filters to remove noise
   Madgwick(GyroX, -GyroY, -GyroZ, -AccX, AccY, AccZ, MagY, -MagX, MagZ, dt); //Updates roll_IMU, pitch_IMU, and yaw_IMU angle estimates (degrees)
 
   //Compute desired state
   getDesState(); //Convert raw commands to normalized values based on saturated control limits
+	setDesState(1); // Uncomment to set the desired state over serial commands (only affects pitch yaw and roll);
   
   //PID Controller - SELECT ONE:
-  controlANGLE(); //Stabilize on angle setpoint
+		controlANGLE();
   //controlANGLE2(); //Stabilize on angle setpoint using cascaded method. Rate controller must be tuned well first!
   //controlRATE(); //Stabilize on rate setpoint
 
@@ -436,6 +493,8 @@ void loop() {
   //Get vehicle commands for next loop iteration
   getCommands(); //Pulls current available radio commands
   failSafe(); //Prevent failures in event of bad receiver connection, defaults to failsafe values assigned in setup
+
+  getJoyAngle();
 
   //Regulate loop rate
   loopRate(2000); //Do not exceed 2000Hz, all filter parameters tuned to 2000Hz by default
@@ -482,6 +541,18 @@ void controlMixer() {
   s5_command_scaled = 0;
   s6_command_scaled = 0;
   s7_command_scaled = 0;
+
+	if (irisFlag) { // If the iris is open, then add the joystick PID values to mixing
+		m1_command_scaled = m1_command_scaled - yAngle_PID + xAngle_PID;
+		m2_command_scaled = m2_command_scaled - yAngle_PID - xAngle_PID;
+		m3_command_scaled = m3_command_scaled + yAngle_PID - xAngle_PID;
+		m4_command_scaled = m4_command_scaled + yAngle_PID + xAngle_PID;
+
+		s1_command_scaled = s1_command_scaled - yAngle_PID + xAngle_PID;
+		s2_command_scaled = s2_command_scaled - yAngle_PID - xAngle_PID;
+		s3_command_scaled = s3_command_scaled + yAngle_PID - xAngle_PID;
+		s4_command_scaled = s4_command_scaled + yAngle_PID + xAngle_PID;
+	}
  
 }
 
@@ -889,6 +960,35 @@ void Madgwick6DOF(float gx, float gy, float gz, float ax, float ay, float az, fl
   yaw_IMU = -atan2(q1*q2 + q0*q3, 0.5f - q2*q2 - q3*q3)*57.29577951; //degrees
 }
 
+void setDesState(int controlledAxis) {
+	//DESCRIPTION: Sets the desired pitch and roll angles based on user input over USB
+	/*
+		Input:
+			var 							type		descr
+			===     					====		=====
+			controlledAxis 		int 		The axis about which the user's serial inputs set the desired angle.
+																1: roll
+																2: pitch
+	*/
+	if (Serial.available()) {
+		serialInputValue = Serial.parseInt();
+		while (Serial.available() !=0) {
+			Serial.read();
+		}
+	}
+	switch (controlledAxis) {
+		case 1:
+			roll_des = serialInputValue;
+			break;
+		case 2:
+			pitch_des = serialInputValue;
+			break;
+		default:
+			break;
+	}
+}
+
+
 void getDesState() {
   //DESCRIPTION: Normalizes desired control values to appropriate values
   /*
@@ -905,15 +1005,26 @@ void getDesState() {
   roll_passthru = roll_des/2.0; //Between -0.5 and 0.5
   pitch_passthru = pitch_des/2.0; //Between -0.5 and 0.5
   yaw_passthru = yaw_des/2.0; //Between -0.5 and 0.5
-  
+  // Desired pendulum angle
+	// OLD version:
+	//xAngle_des = -roll_IMU/xAngle_max; // Between -1 and 1
+	//yAngle_des = -pitch_IMU/yAngle_max; // Between -1 and 1
+	xAngle_des = roll_des;
+	yAngle_des = pitch_des;
+
   //Constrain within normalized bounds
   thro_des = constrain(thro_des, 0.0, 1.0); //Between 0 and 1
   roll_des = constrain(roll_des, -1.0, 1.0)*maxRoll; //Between -maxRoll and +maxRoll
   pitch_des = constrain(pitch_des, -1.0, 1.0)*maxPitch; //Between -maxPitch and +maxPitch
   yaw_des = constrain(yaw_des, -1.0, 1.0)*maxYaw; //Between -maxYaw and +maxYaw
+	xAngle_des = constrain(xAngle_des, -1.0, 1.0)*xAngle_max;
+	yAngle_des = constrain(yAngle_des, -1.0, 1.0)*yAngle_max;
   roll_passthru = constrain(roll_passthru, -0.5, 0.5);
   pitch_passthru = constrain(pitch_passthru, -0.5, 0.5);
   yaw_passthru = constrain(yaw_passthru, -0.5, 0.5);
+}
+
+void invertedPendulum() {
 }
 
 void controlANGLE() {
@@ -967,6 +1078,91 @@ void controlANGLE() {
   error_yaw_prev = error_yaw;
   integral_yaw_prev = integral_yaw;
 }
+
+// void controlANGLE_Pendulum() {
+//   //DESCRIPTION: Computes control commands based on state error (angle)
+//   /*
+//    * Basic PID control to stablize on angle setpoint based on desired states roll_des, pitch_des, and yaw_des computed in 
+//    * getDesState(). Error is simply the desired state minus the actual state (ex. roll_des - roll_IMU). Two safety features
+//    * are implimented here regarding the I terms. The I terms are saturated within specified limits on startup to prevent 
+//    * excessive buildup. This can be seen by holding the vehicle at an angle and seeing the motors ramp up on one side until
+//    * they've maxed out throttle...saturating I to a specified limit fixes this. The second feature defaults the I terms to 0
+//    * if the throttle is at the minimum setting. This means the motors will not start spooling up on the ground, and the I 
+//    * terms will always start from 0 on takeoff. This function updates the variables roll_PID, pitch_PID, and yaw_PID which
+//    * can be thought of as 1-D stablized signals. They are mixed to the configuration of the vehicle in controlMixer().
+//    */
+//   
+//   //Roll
+//   error_roll = roll_des - roll_IMU;
+//   integral_roll = integral_roll_prev + error_roll*dt;
+//   if (channel_1_pwm < 1060) {   //Don't let integrator build if throttle is too low
+//     integral_roll = 0;
+//   }
+//   integral_roll = constrain(integral_roll, -i_limit, i_limit); //Saturate integrator to prevent unsafe buildup
+//   derivative_roll = GyroX;
+//   roll_PID = 0.01*(Kp_roll_angle*error_roll + Ki_roll_angle*integral_roll - Kd_roll_angle*derivative_roll); //Scaled by .01 to bring within -1 to 1 range
+// 
+//   //Pitch
+//   error_pitch = pitch_des - pitch_IMU;
+//   integral_pitch = integral_pitch_prev + error_pitch*dt;
+//   if (channel_1_pwm < 1060) {   //Don't let integrator build if throttle is too low
+//     integral_pitch = 0;
+//   }
+//   integral_pitch = constrain(integral_pitch, -i_limit, i_limit); //Saturate integrator to prevent unsafe buildup
+//   derivative_pitch = GyroY;
+//   pitch_PID = .01*(Kp_pitch_angle*error_pitch + Ki_pitch_angle*integral_pitch - Kd_pitch_angle*derivative_pitch); //Scaled by .01 to bring within -1 to 1 range
+// 
+//   //Yaw, stablize on rate from GyroZ
+//   error_yaw = yaw_des - GyroZ;
+//   integral_yaw = integral_yaw_prev + error_yaw*dt;
+//   if (channel_1_pwm < 1060) {   //Don't let integrator build if throttle is too low
+//     integral_yaw = 0;
+//   }
+//   integral_yaw = constrain(integral_yaw, -i_limit, i_limit); //Saturate integrator to prevent unsafe buildup
+//   derivative_yaw = (error_yaw - error_yaw_prev)/dt; 
+//   yaw_PID = .01*(Kp_yaw*error_yaw + Ki_yaw*integral_yaw + Kd_yaw*derivative_yaw); //Scaled by .01 to bring within -1 to 1 range
+// 
+// 	// Joystick xAngle
+// 	error_xAngle = xAngle_des - xAngle;
+// 	integral_xAngle = integral_xAngle_prev + error_xAngle*dt;
+// 	if (channel_1_pwm < 1060) { // Don't let integrator build if throttle is too low
+// 		integral_xAngle = 0;
+// 	}
+// 	integral_xAngle = constrain(integral_xAngle, -i_limit, i_limit); // Saturate integrator to prevent unsafe buildup
+// 	derivative_xAngle = (error_xAngle - error_xAngle_prev)/dt;
+// 	xAngle_PID = 0.01*(Kp_xAngle*error_xAngle 
+// 										+ Ki_xAngle*integral_xAngle 
+// 										+ Kd_xAngle*derivative_xAngle);
+// 	
+// 
+// 	// Joystick yAngle
+// 	error_yAngle = yAngle_des - yAngle;
+// 	integral_yAngle = integral_yAngle_prev + error_yAngle*dt;
+// 	if (channel_1_pwm < 1060) {
+// 		// don't let integrator build if throttle is too low
+// 		integral_yAngle = 0;
+// 	}
+// 	integral_yAngle = constrain(integral_yAngle, -i_limit, i_limit); // Saturate integrator to prevent
+// 																																	 //unsafe buildup
+// 	derivative_yAngle = (error_yAngle - error_yAngle_prev)/dt;
+// 	yAngle_PID = 0.01*(Kp_yAngle*error_yAngle
+// 										+ Ki_yAngle*integral_yAngle
+// 										+ Kd_yAngle*derivative_yAngle);
+// 
+//   //Update roll variables
+//   integral_roll_prev = integral_roll;
+//   //Update pitch variables
+//   integral_pitch_prev = integral_pitch;
+//   //Update yaw variables
+//   error_yaw_prev = error_yaw;
+//   integral_yaw_prev = integral_yaw;
+// 	// Update xAngle variables
+// 	error_xAngle_prev = error_xAngle;
+// 	integral_xAngle_prev = integral_xAngle;
+// 	// Update yAngle variables
+// 	error_yAngle_prev = error_yAngle;
+// 	integral_yAngle_prev = integral_yAngle;
+// }
 
 void controlANGLE2() {
   //DESCRIPTION: Computes control commands based on state error (angle) in cascaded scheme
@@ -1441,21 +1637,21 @@ void throttleCut() {
    * the motors to anything other than minimum value. Safety first. 
    */
   if (channel_5_pwm > 1500) {
-    m1_command_PWM = 120;
-    m2_command_PWM = 120;
-    m3_command_PWM = 120;
-    m4_command_PWM = 120;
-    m5_command_PWM = 120;
-    m6_command_PWM = 120;
+    // m1_command_PWM = 120;
+    // m2_command_PWM = 120;
+    // m3_command_PWM = 120;
+    // m4_command_PWM = 120;
+    // m5_command_PWM = 120;
+    // m6_command_PWM = 120;
     
     //Uncomment if using servo PWM variables to control motor ESCs
-    //s1_command_PWM = 0;
-    //s2_command_PWM = 0;
-    //s3_command_PWM = 0;
-    //s4_command_PWM = 0;
-    //s5_command_PWM = 0;
-    //s6_command_PWM = 0;
-    //s7_command_PWM = 0;
+    s1_command_PWM = 0;
+    s2_command_PWM = 0;
+    s3_command_PWM = 0;
+    s4_command_PWM = 0;
+    s5_command_PWM = 0;
+    s6_command_PWM = 0;
+    s7_command_PWM = 0;
   }
 }
 
@@ -1637,6 +1833,10 @@ void printRollPitchYaw() {
 void printPIDoutput() {
   if (current_time - print_counter > 10000) {
     print_counter = micros();
+    Serial.print(F("xAngle_PID: "));
+    Serial.print(xAngle_PID);
+    Serial.print(F(" yAngle_PID: "));
+    Serial.print(yAngle_PID);
     Serial.print(F("roll_PID: "));
     Serial.print(roll_PID);
     Serial.print(F(" pitch_PID: "));
@@ -1690,6 +1890,68 @@ void printLoopRate() {
     Serial.print(F("dt = "));
     Serial.println(dt*1000000.0);
   }
+}
+
+void getJoyAngle() {
+	xCounts = analogRead(joyXPin);
+	yCounts = analogRead(joyYPin);
+	xAngle = static_cast<float>(xCounts - xCounts_min) / static_cast<float>(xCounts_max -
+				xCounts_min) * (xAngle_max - xAngle_min) - 30.0f;
+	yAngle = static_cast<float>(yCounts - yCounts_min) / static_cast<float>(yCounts_max -
+				yCounts_min) * (yAngle_max - yAngle_min) - 30.0f;
+
+	// Serial.print("xCounts = ");
+	// Serial.println(xCounts);
+	// Serial.print("yCounts = ");
+	// Serial.println(yCounts);
+	//  Serial.print("xAngle = ");
+	//  Serial.println(xAngle);
+	//  Serial.print("yAngle = ");
+	//  Serial.println(yAngle);
+}
+
+void openIris() {
+	iris.write(30);
+}
+
+void closeIris() {
+	iris.write(118);
+}
+
+void calibrateJoystick() {
+	xCounts_max = 0;
+	xCounts_min = 1000;
+	yCounts_max = 0;
+	yCounts_min = 1000;
+
+	while (1) {
+		xCounts = analogRead(joyXPin);
+		yCounts = analogRead(joyYPin);
+
+		if (xCounts < xCounts_min) {
+			xCounts_min = xCounts;
+		}
+		if (xCounts > xCounts_max) {
+			xCounts_max = xCounts;
+		}
+		if (yCounts < yCounts_min) {
+			yCounts_min = yCounts;
+		}
+		if (yCounts > yCounts_max) {
+			yCounts_max = yCounts;
+		}
+		Serial.print("xCounts_max = ");
+		Serial.print(xCounts_max);
+		Serial.print("\t");
+		Serial.print("xCounts_min = ");
+		Serial.print(xCounts_min);
+		Serial.print("\t");
+		Serial.print("yCounts_max = ");
+		Serial.print(yCounts_max);
+		Serial.print("\t");
+		Serial.print("yCounts_min = ");
+		Serial.println(yCounts_min);
+	}
 }
 
 //=========================================================================================//
