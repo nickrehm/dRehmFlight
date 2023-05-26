@@ -2,7 +2,6 @@
 //Author: Nicholas Rehm
 //Project Start: 1/6/2020
 //Last Updated: 7/29/2022
-//Version: Beta 1.3
  
 //========================================================================================================================//
 
@@ -169,12 +168,12 @@ float MagScaleY = 1.0;
 float MagScaleZ = 1.0;
 
 //IMU calibration parameters - calibrate IMU using calculate_IMU_error() in the void setup() to get these values, then comment out calculate_IMU_error()
-float AccErrorX = 0.09;
-float AccErrorY = -0.04;
-float AccErrorZ = -0.04;
-float GyroErrorX = -3.15;
-float GyroErrorY= -0.52;
-float GyroErrorZ = -0.03;
+float AccErrorX = 0.07;
+float AccErrorY = 0.02;
+float AccErrorZ = -0.02;
+float GyroErrorX = -3.13;
+float GyroErrorY = -0.76;
+float GyroErrorZ = 0.36;
 
 //Controller parameters (take note of defaults before modifying!): 
 float i_limit = 25.0;     //Integrator saturation level, mostly for safety (default 25.0)
@@ -183,7 +182,7 @@ float maxPitch = 30.0;    //Max pitch angle in degrees for angle mode (maximum ~
 float maxYaw = 160.0;     //Max yaw rate in deg/sec
 
 float Kp_roll_angle = 0.2;    //Roll P-gain - angle mode 
-float Ki_roll_angle = 0.3;    //Roll I-gain - angle mode
+float Ki_roll_angle = 0.0;    //Roll I-gain - angle mode
 float Kd_roll_angle = 0.05;   //Roll D-gain - angle mode (has no effect on controlANGLE2)
 float B_loop_roll = 0.9;      //Roll damping term for controlANGLE2(), lower is more damping (must be between 0 to 1)
 float Kp_pitch_angle = 0.2;   //Pitch P-gain - angle mode
@@ -256,7 +255,7 @@ const int servo6Pin = 11;
 const int servo7Pin = 12;
 
 // Joystick pins
-const int joyXPin = 40;
+const int joyAlphaPin = 40;
 const int joyYPin = 41;
 
 // Pin and object for iris servo:
@@ -335,8 +334,13 @@ int s1_command_PWM, s2_command_PWM, s3_command_PWM, s4_command_PWM, s5_command_P
 // Flag for whether or not Iris is open
 bool irisFlag = 0;
 
-// User input value for the setDesState() function
+// User input value for the setDesStateSerial() function
 float serialInputValue = 0;
+float sineFrequency = 0; // Hz
+float sineTime = 0; // seconds
+int axisToRotate = 1; // The axis to rotate about in the setDesStateSerial() function
+bool useSineWave = 1;
+bool sweepFlag = 0;
 
 
 
@@ -440,11 +444,12 @@ void loop() {
 
   //Print data at 100hz (uncomment one at a time for troubleshooting) - SELECT ONE:
   //printRadioData();     //Prints radio pwm values (expected: 1000 to 2000)
-  printDesiredState();  //Prints desired vehicle state commanded in either degrees or deg/sec (expected: +/- maxAXIS for roll, pitch, yaw; 0 to 1 for throttle)
+  //printDesiredState();  //Prints desired vehicle state commanded in either degrees or deg/sec (expected: +/- maxAXIS for roll, pitch, yaw; 0 to 1 for throttle)
   //printGyroData();      //Prints filtered gyro data direct from IMU (expected: ~ -250 to 250, 0 at rest)
   //printAccelData();     //Prints filtered accelerometer data direct from IMU (expected: ~ -2 to 2; x,y 0 when level, z 1 when level)
   //printMagData();       //Prints filtered magnetometer data direct from IMU (expected: ~ -300 to 300)
   //printRollPitchYaw();  //Prints roll, pitch, and yaw angles in degrees from Madgwick filter (expected: degrees, 0 when level)
+  printRollPitchYawAndDesired();
   //printPIDoutput();     //Prints computed stabilized PID variables from controller and desired setpoint (expected: ~ -1 to 1)
   //printMotorCommands(); //Prints the values being written to the motors (expected: 120 to 250)
   //printServoCommands(); //Prints the values being written to the servos (expected: 0 to 180)
@@ -466,7 +471,8 @@ void loop() {
 
   //Compute desired state
   getDesState(); //Convert raw commands to normalized values based on saturated control limits
-	setDesState(1); // Uncomment to set the desired state over serial commands (only affects pitch yaw and roll);
+	//setDesStateSerial(axisToRotate); // Uncomment to set the desired state over serial commands (only affects pitch yaw and roll);
+  performSineSweep(axisToRotate, 0.05, 1.5, 60);
   
   //PID Controller - SELECT ONE:
 		controlANGLE();
@@ -960,7 +966,7 @@ void Madgwick6DOF(float gx, float gy, float gz, float ax, float ay, float az, fl
   yaw_IMU = -atan2(q1*q2 + q0*q3, 0.5f - q2*q2 - q3*q3)*57.29577951; //degrees
 }
 
-void setDesState(int controlledAxis) {
+void setDesStateSerial(int controlledAxis) {
 	//DESCRIPTION: Sets the desired pitch and roll angles based on user input over USB
 	/*
 		Input:
@@ -971,17 +977,70 @@ void setDesState(int controlledAxis) {
 																2: pitch
 	*/
 	if (Serial.available()) {
-		serialInputValue = Serial.parseInt();
+		serialInputValue = Serial.parseFloat();
 		while (Serial.available() !=0) {
 			Serial.read();
 		}
 	}
+	
+	float desiredAngle = 0;
+
+	if (useSineWave) {
+		sineFrequency = static_cast<float>(serialInputValue);
+		desiredAngle = 10*sin(2*PI*sineFrequency*sineTime);    // Set the output to be a sin wave between -5 and 5 degrees
+		sineTime = sineTime + 1/2000.0f;
+	}
+	else {
+		desiredAngle = static_cast<float>(serialInputValue);
+	}
+
 	switch (controlledAxis) {
 		case 1:
-			roll_des = serialInputValue;
+			roll_des = desiredAngle;
 			break;
 		case 2:
-			pitch_des = serialInputValue;
+			pitch_des = desiredAngle;
+			break;
+		default:
+			break;
+	}
+}
+
+void performSineSweep(int controlledAxis, float fmin, float fmax, float sweepTime) {
+	//DESCRIPTION: Performs a sine sweep from fmin (Hz) to fmax (Hz) over sweepTime (seconds)
+	/*
+		Input:
+			var 							type		descr
+			===     					====		=====
+			controlledAxis 		int 		The axis about which the user's serial inputs set the desired angle.
+																1: roll
+																2: pitch
+			fmin 							float 	The starting frequency for the sine sweep in Hz
+			fmax 							float   The ending frequency for the sine sweep in Hz
+			sweepTime 				float 	The time period to perform the sweep over
+	*/
+	float desiredAngle = 0;
+  float amp = 10; 		// Sine wave amplitude in degrees
+  if (Serial.available()) {
+    sweepFlag = 1;
+    while (Serial.available() !=0) {
+        Serial.read();
+      }
+	}
+  if (sweepFlag){
+    desiredAngle = amp*sin(PI*(fmax - fmin)/pow(sweepTime, 2)*pow(sineTime, 3) + 2*PI*fmin*sineTime);
+    if (sineTime > sweepTime) {
+      desiredAngle = 0;
+    }
+    sineTime = sineTime + 1/2000.0f;
+  }
+
+	switch (controlledAxis) {
+		case 1:
+			roll_des = desiredAngle;
+			break;
+		case 2:
+			pitch_des = desiredAngle;
 			break;
 		default:
 			break;
@@ -1830,6 +1889,27 @@ void printRollPitchYaw() {
   }
 }
 
+void printRollPitchYawAndDesired() {
+	// Will print in this order:
+	// 	(roll) (pitch) (yaw) (thro_des) (roll_des) (pitch_des) (yaw_des)
+  if (current_time - print_counter > 10000) {
+    print_counter = micros();
+    Serial.print(roll_IMU);
+		Serial.print("\t");
+    Serial.print(pitch_IMU);
+		Serial.print("\t");
+    Serial.print(yaw_IMU);
+		Serial.print("\t");
+    Serial.print(thro_des);
+		Serial.print("\t");
+    Serial.print(roll_des);
+		Serial.print("\t");
+    Serial.print(pitch_des);
+		Serial.print("\t");
+    Serial.println(yaw_des);
+  }
+}
+
 void printPIDoutput() {
   if (current_time - print_counter > 10000) {
     print_counter = micros();
@@ -1893,21 +1973,12 @@ void printLoopRate() {
 }
 
 void getJoyAngle() {
-	xCounts = analogRead(joyXPin);
+	xCounts = analogRead(joyAlphaPin);
 	yCounts = analogRead(joyYPin);
 	xAngle = static_cast<float>(xCounts - xCounts_min) / static_cast<float>(xCounts_max -
 				xCounts_min) * (xAngle_max - xAngle_min) - 30.0f;
 	yAngle = static_cast<float>(yCounts - yCounts_min) / static_cast<float>(yCounts_max -
 				yCounts_min) * (yAngle_max - yAngle_min) - 30.0f;
-
-	// Serial.print("xCounts = ");
-	// Serial.println(xCounts);
-	// Serial.print("yCounts = ");
-	// Serial.println(yCounts);
-	//  Serial.print("xAngle = ");
-	//  Serial.println(xAngle);
-	//  Serial.print("yAngle = ");
-	//  Serial.println(yAngle);
 }
 
 void openIris() {
@@ -1925,7 +1996,7 @@ void calibrateJoystick() {
 	yCounts_min = 1000;
 
 	while (1) {
-		xCounts = analogRead(joyXPin);
+		xCounts = analogRead(joyAlphaPin);
 		yCounts = analogRead(joyYPin);
 
 		if (xCounts < xCounts_min) {
