@@ -3,7 +3,7 @@
 //Project Start: 1/6/2020
 //Last Updated: 7/29/2022
  
-//========================================================================================================================//
+//================================================================================================//
 
 //CREDITS + SPECIAL THANKS
 /*
@@ -25,9 +25,9 @@ Everyone that sends me pictures and videos of your flying creations! -Nick
 
 
 
-//========================================================================================================================//
-//                                                 USER-SPECIFIED DEFINES                                                 //                                                                 
-//========================================================================================================================//
+//================================================================================================//
+//                                    USER-SPECIFIED DEFINES                        						  //                                                                 
+//================================================================================================//
 
 
 //Uncomment only one receiver type
@@ -35,7 +35,8 @@ Everyone that sends me pictures and videos of your flying creations! -Nick
 //#define USE_PPM_RX
 #define USE_SBUS_RX
 //#define USE_DSM_RX
-static const uint8_t num_DSM_channels = 6; //If using DSM RX, change this to match the number of transmitter channels you have
+static const uint8_t num_DSM_channels = 6; //If using DSM RX, change this to match the number of 
+// 																					 transmitter channels you have
 
 //Uncomment only one IMU
 #define USE_MPU6050_I2C //Default
@@ -55,7 +56,7 @@ static const uint8_t num_DSM_channels = 6; //If using DSM RX, change this to mat
 
 
 
-//========================================================================================================================//
+//================================================================================================//
 
 
 
@@ -85,7 +86,7 @@ static const uint8_t num_DSM_channels = 6; //If using DSM RX, change this to mat
 
 
 
-//========================================================================================================================//
+//================================================================================================//
 
 
 
@@ -141,25 +142,28 @@ static const uint8_t num_DSM_channels = 6; //If using DSM RX, change this to mat
 
 
 
-//========================================================================================================================//
-//                                               USER-SPECIFIED VARIABLES                                                 //                           
-//========================================================================================================================//
+//================================================================================================//
+//                                     USER-SPECIFIED VARIABLES                                   //                           
+//================================================================================================//
 
-//Radio failsafe values for every channel in the event that bad reciever data is detected. Recommended defaults:
+//Radio failsafe values for every channel in the event that bad reciever data is detected. 
+//Recommended defaults:
 unsigned long channel_1_fs = 1000; //thro
 unsigned long channel_2_fs = 1500; //ail
 unsigned long channel_3_fs = 1500; //elev
 unsigned long channel_4_fs = 1500; //rudd
 unsigned long channel_5_fs = 2000; //gear, greater than 1500 = throttle cut
-unsigned long channel_6_fs = 2000; //aux1
+unsigned long channel_6_fs = 2000; // Iris toggle
 
-//Filter parameters - Defaults tuned for 2kHz loop rate; Do not touch unless you know what you are doing:
+//Filter parameters - Defaults tuned for 2kHz loop rate; 
+//Do not touch unless you know what you are doing:
 float B_madgwick = 0.04;  //Madgwick filter parameter
 float B_accel = 0.14;     //Accelerometer LP filter paramter, (MPU6050 default: 0.14. MPU9250 default: 0.2)
 float B_gyro = 0.1;       //Gyro LP filter paramter, (MPU6050 default: 0.1. MPU9250 default: 0.17)
 float B_mag = 1.0;        //Magnetometer LP filter parameter
 
-//Magnetometer calibration parameters - if using MPU9250, uncomment calibrateMagnetometer() in void setup() to get these values, else just ignore these
+//Magnetometer calibration parameters - if using MPU9250, uncomment calibrateMagnetometer() in 
+//void setup() to get these values, else just ignore these
 float MagErrorX = 0.0;
 float MagErrorY = 0.0; 
 float MagErrorZ = 0.0;
@@ -167,7 +171,8 @@ float MagScaleX = 1.0;
 float MagScaleY = 1.0;
 float MagScaleZ = 1.0;
 
-//IMU calibration parameters - calibrate IMU using calculate_IMU_error() in the void setup() to get these values, then comment out calculate_IMU_error()
+//IMU calibration parameters - calibrate IMU using calculate_IMU_error() in the void setup() to get
+//these values, then comment out calculate_IMU_error()
 float AccErrorX = 0.07;
 float AccErrorY = 0.02;
 float AccErrorZ = -0.02;
@@ -201,36 +206,44 @@ float Kp_yaw = 0.3;           //Yaw P-gain
 float Ki_yaw = 0.05;          //Yaw I-gain
 float Kd_yaw = 0.00015;       //Yaw D-gain (be careful when increasing too high, motors will begin to overheat!)
 
-int xCounts;        // Joystick x-axis rotation analog signal
 int xCounts_min = 172; 	// Analog int of maximum x-axis analog signal
 int xCounts_max = 1021;  	// Analog int of minimum x-axis analog signal
-int yCounts;        // Joystick y-axis rotation analog signal
 int yCounts_min = 194; 	// Analog int of maximum y-axis analog signal
 int yCounts_max = 915;  	// Analog int of minimum y-axis analog signal
 
-float xAngle;       // Joystick x-axis rotation angle
 float xAngle_min = -30;   // Minimum xAngle
 float xAngle_max = 30;   // Maximum xAngle
-float yAngle;       // Joystick x-axis rotation angle
 float yAngle_min = -30;   // Minimum xAngle
 float yAngle_max = 30;   // Maximum xAngle
 
-// Controller parameters for joystick
-float Kp_xAngle = 0.2; 		// xAngle P-gain
-float Ki_xAngle = 0.3; 		// xAngle I-gain
-float Kd_xAngle = 0.05;  	// xAngle D-gain
-float Kp_yAngle = 0.2; 		// yAngle P-gain
-float Ki_yAngle = 0.3; 		// yAngle I-gain
-float Kd_yAngle = 0.05; 	// yAngle D-gain
+
+// Options for controlling the quad using user input values written over the serial line
+bool useSerialAngleCommands = 0;  // Sets whether or not to allow direct input of pitch or roll
+																	// angles during a test flight. Setting this to true
+int axisToRotate = 1; // The axis to rotate about in the setDesStateSerial() function:
+											// 	1 = roll, 2 = pitch
+bool useSineWave = 1; // Determines whether or not to use a sine wave in the setDesStateSerial()
+											// if so, then the input from the serial line is taken to be the frequency of
+											// this sine wave in Hz.
+
+// Options for sine sweep
+bool conductSineSweep = 0; 	// Option for whether or not to do a sine sweep as part of a test
+														// 	flight. Setting this to true will result in pilot control of the
+														// 	axis connected to axisToRotate being removed, and a sine sweep 
+														// 	conducted between the maximum and minimum frequencies specified.
+float fmax = 1.5; 			// Maximum frequency of the sine sweep in Hz
+float fmin = 0.05; 			// Minimum frequency of the sine sweep in Hz
+float sweepTime = 60;  	// How long to run the sweep for in seconds
 
 
 //========================================================================================================================//
 //                                                     DECLARE PINS                                                       //                           
 //========================================================================================================================//                                          
 
-//NOTE: Pin 13 is reserved for onboard LED, pins 18 and 19 are reserved for the MPU6050 IMU for default setup
-//Radio:
-//Note: If using SBUS, connect to pin 21 (RX5), if using DSM, connect to pin 15 (RX3)
+//NOTE: Pin 13 is reserved for onboard LED, pins 18 and 19 are reserved for the MPU6050 IMU for 
+// 			default setup
+//Radio note:
+// 			If using SBUS, connect to pin 21 (RX5), if using DSM, connect to pin 15 (RX3)
 const int ch1Pin = 15; //throttle
 const int ch2Pin = 16; //ail
 const int ch3Pin = 17; //ele
@@ -272,7 +285,7 @@ PWMServo servo7;
 
 
 
-//========================================================================================================================//
+//================================================================================================//
 
 
 
@@ -286,7 +299,8 @@ unsigned long blink_counter, blink_delay;
 bool blinkAlternate;
 
 //Radio communication:
-unsigned long channel_1_pwm, channel_2_pwm, channel_3_pwm, channel_4_pwm, channel_5_pwm, channel_6_pwm;
+unsigned long channel_1_pwm, channel_2_pwm, channel_3_pwm, channel_4_pwm, channel_5_pwm, 
+							channel_6_pwm;
 unsigned long channel_1_pwm_prev, channel_2_pwm_prev, channel_3_pwm_prev, channel_4_pwm_prev;
 
 #if defined USE_SBUS_RX
@@ -319,11 +333,13 @@ float roll_passthru, pitch_passthru, yaw_passthru;
 float xAngle_des, yAngle_des;
 
 //Controller:
-float error_roll, error_roll_prev, roll_des_prev, integral_roll, integral_roll_il, integral_roll_ol, integral_roll_prev, integral_roll_prev_il, integral_roll_prev_ol, derivative_roll, roll_PID = 0;
-float error_pitch, error_pitch_prev, pitch_des_prev, integral_pitch, integral_pitch_il, integral_pitch_ol, integral_pitch_prev, integral_pitch_prev_il, integral_pitch_prev_ol, derivative_pitch, pitch_PID = 0;
+float error_roll, error_roll_prev, roll_des_prev, integral_roll, integral_roll_il, integral_roll_ol,
+			integral_roll_prev, integral_roll_prev_il, integral_roll_prev_ol, derivative_roll,
+			roll_PID = 0;
+float error_pitch, error_pitch_prev, pitch_des_prev, integral_pitch, integral_pitch_il,
+			integral_pitch_ol, integral_pitch_prev, integral_pitch_prev_il, integral_pitch_prev_ol,
+			derivative_pitch, pitch_PID = 0;
 float error_yaw, error_yaw_prev, integral_yaw, integral_yaw_prev, derivative_yaw, yaw_PID = 0;
-float error_xAngle, error_xAngle_prev, integral_xAngle, integral_xAngle_prev, derivative_xAngle, xAngle_PID = 0;
-float error_yAngle, error_yAngle_prev, integral_yAngle, integral_yAngle_prev, derivative_yAngle, yAngle_PID = 0;
 
 //Mixer
 float m1_command_scaled, m2_command_scaled, m3_command_scaled, m4_command_scaled, m5_command_scaled, m6_command_scaled;
@@ -334,15 +350,20 @@ int s1_command_PWM, s2_command_PWM, s3_command_PWM, s4_command_PWM, s5_command_P
 // Flag for whether or not Iris is open
 bool irisFlag = 0;
 
-// User input value for the setDesStateSerial() function
-float serialInputValue = 0;
-float sineFrequency = 0; // Hz
-float sineTime = 0; // seconds
-int axisToRotate = 1; // The axis to rotate about in the setDesStateSerial() function
-bool useSineWave = 1;
-bool sweepFlag = 0;
+// Joystick values
+int xCounts;        // Joystick x-axis rotation analog signal
+int yCounts;        // Joystick y-axis rotation analog signal
+float xAngle;       // Joystick x-axis rotation angle
+float yAngle;       // Joystick x-axis rotation angle
 
+// Values for the setDesStateSerial() function
+float serialInputValue = 0;  // User input over the serial line
+float sineFrequency = 0; // If using sine wave, its frequency in Hz
+float sineTime = 0; 		// Counter used to determine time in the sine functions (seconds)
 
+// A flag for whether or not the sine sweep should be conducted. User input while the program is 
+// running sets this. DON'T SET THIS YOURSELF!
+bool sweepFlag = 0;     
 
 //========================================================================================================================//
 //                                                      VOID SETUP                                                        //                           
@@ -449,13 +470,14 @@ void loop() {
   //printAccelData();     //Prints filtered accelerometer data direct from IMU (expected: ~ -2 to 2; x,y 0 when level, z 1 when level)
   //printMagData();       //Prints filtered magnetometer data direct from IMU (expected: ~ -300 to 300)
   //printRollPitchYaw();  //Prints roll, pitch, and yaw angles in degrees from Madgwick filter (expected: degrees, 0 when level)
-  printRollPitchYawAndDesired();
+  printRollPitchYawAndDesired(); // Combines printRollPitchYaw() with printDesiredState() and prints
+																 // in tab separted values in the order specified in the function.
   //printPIDoutput();     //Prints computed stabilized PID variables from controller and desired setpoint (expected: ~ -1 to 1)
   //printMotorCommands(); //Prints the values being written to the motors (expected: 120 to 250)
   //printServoCommands(); //Prints the values being written to the servos (expected: 0 to 180)
   //printLoopRate();      //Prints the time between loops in microseconds (expected: microseconds between loop iterations)
 
-	// Chechk for whether or not the iris should be open
+	// Check for whether or not the iris should be open
 	if (channel_6_pwm < 1500) {
 		irisFlag = 0;
 		closeIris();
@@ -471,8 +493,17 @@ void loop() {
 
   //Compute desired state
   getDesState(); //Convert raw commands to normalized values based on saturated control limits
-	//setDesStateSerial(axisToRotate); // Uncomment to set the desired state over serial commands (only affects pitch yaw and roll);
-  performSineSweep(axisToRotate, 0.05, 1.5, 60);
+
+
+	if (useSerialAngleCommands) {
+		// Overwrites axisToRotate in getDesState()
+		setDesStateSerial(axisToRotate);
+	}
+
+	if (conductSineSweep) {
+		// Overwrites axisToRotate in getDesState()
+  	performSineSweep(axisToRotate, fmin, fmax, sweepTime);
+	}
   
   //PID Controller - SELECT ONE:
 		controlANGLE();
@@ -500,6 +531,7 @@ void loop() {
   getCommands(); //Pulls current available radio commands
   failSafe(); //Prevent failures in event of bad receiver connection, defaults to failsafe values assigned in setup
 
+	// Get the joystick angle from their potentiometers
   getJoyAngle();
 
   //Regulate loop rate
@@ -547,19 +579,6 @@ void controlMixer() {
   s5_command_scaled = 0;
   s6_command_scaled = 0;
   s7_command_scaled = 0;
-
-	if (irisFlag) { // If the iris is open, then add the joystick PID values to mixing
-		m1_command_scaled = m1_command_scaled - yAngle_PID + xAngle_PID;
-		m2_command_scaled = m2_command_scaled - yAngle_PID - xAngle_PID;
-		m3_command_scaled = m3_command_scaled + yAngle_PID - xAngle_PID;
-		m4_command_scaled = m4_command_scaled + yAngle_PID + xAngle_PID;
-
-		s1_command_scaled = s1_command_scaled - yAngle_PID + xAngle_PID;
-		s2_command_scaled = s2_command_scaled - yAngle_PID - xAngle_PID;
-		s3_command_scaled = s3_command_scaled + yAngle_PID - xAngle_PID;
-		s4_command_scaled = s4_command_scaled + yAngle_PID + xAngle_PID;
-	}
- 
 }
 
 void IMUinit() {
@@ -1083,8 +1102,6 @@ void getDesState() {
   yaw_passthru = constrain(yaw_passthru, -0.5, 0.5);
 }
 
-void invertedPendulum() {
-}
 
 void controlANGLE() {
   //DESCRIPTION: Computes control commands based on state error (angle)
@@ -1138,90 +1155,6 @@ void controlANGLE() {
   integral_yaw_prev = integral_yaw;
 }
 
-// void controlANGLE_Pendulum() {
-//   //DESCRIPTION: Computes control commands based on state error (angle)
-//   /*
-//    * Basic PID control to stablize on angle setpoint based on desired states roll_des, pitch_des, and yaw_des computed in 
-//    * getDesState(). Error is simply the desired state minus the actual state (ex. roll_des - roll_IMU). Two safety features
-//    * are implimented here regarding the I terms. The I terms are saturated within specified limits on startup to prevent 
-//    * excessive buildup. This can be seen by holding the vehicle at an angle and seeing the motors ramp up on one side until
-//    * they've maxed out throttle...saturating I to a specified limit fixes this. The second feature defaults the I terms to 0
-//    * if the throttle is at the minimum setting. This means the motors will not start spooling up on the ground, and the I 
-//    * terms will always start from 0 on takeoff. This function updates the variables roll_PID, pitch_PID, and yaw_PID which
-//    * can be thought of as 1-D stablized signals. They are mixed to the configuration of the vehicle in controlMixer().
-//    */
-//   
-//   //Roll
-//   error_roll = roll_des - roll_IMU;
-//   integral_roll = integral_roll_prev + error_roll*dt;
-//   if (channel_1_pwm < 1060) {   //Don't let integrator build if throttle is too low
-//     integral_roll = 0;
-//   }
-//   integral_roll = constrain(integral_roll, -i_limit, i_limit); //Saturate integrator to prevent unsafe buildup
-//   derivative_roll = GyroX;
-//   roll_PID = 0.01*(Kp_roll_angle*error_roll + Ki_roll_angle*integral_roll - Kd_roll_angle*derivative_roll); //Scaled by .01 to bring within -1 to 1 range
-// 
-//   //Pitch
-//   error_pitch = pitch_des - pitch_IMU;
-//   integral_pitch = integral_pitch_prev + error_pitch*dt;
-//   if (channel_1_pwm < 1060) {   //Don't let integrator build if throttle is too low
-//     integral_pitch = 0;
-//   }
-//   integral_pitch = constrain(integral_pitch, -i_limit, i_limit); //Saturate integrator to prevent unsafe buildup
-//   derivative_pitch = GyroY;
-//   pitch_PID = .01*(Kp_pitch_angle*error_pitch + Ki_pitch_angle*integral_pitch - Kd_pitch_angle*derivative_pitch); //Scaled by .01 to bring within -1 to 1 range
-// 
-//   //Yaw, stablize on rate from GyroZ
-//   error_yaw = yaw_des - GyroZ;
-//   integral_yaw = integral_yaw_prev + error_yaw*dt;
-//   if (channel_1_pwm < 1060) {   //Don't let integrator build if throttle is too low
-//     integral_yaw = 0;
-//   }
-//   integral_yaw = constrain(integral_yaw, -i_limit, i_limit); //Saturate integrator to prevent unsafe buildup
-//   derivative_yaw = (error_yaw - error_yaw_prev)/dt; 
-//   yaw_PID = .01*(Kp_yaw*error_yaw + Ki_yaw*integral_yaw + Kd_yaw*derivative_yaw); //Scaled by .01 to bring within -1 to 1 range
-// 
-// 	// Joystick xAngle
-// 	error_xAngle = xAngle_des - xAngle;
-// 	integral_xAngle = integral_xAngle_prev + error_xAngle*dt;
-// 	if (channel_1_pwm < 1060) { // Don't let integrator build if throttle is too low
-// 		integral_xAngle = 0;
-// 	}
-// 	integral_xAngle = constrain(integral_xAngle, -i_limit, i_limit); // Saturate integrator to prevent unsafe buildup
-// 	derivative_xAngle = (error_xAngle - error_xAngle_prev)/dt;
-// 	xAngle_PID = 0.01*(Kp_xAngle*error_xAngle 
-// 										+ Ki_xAngle*integral_xAngle 
-// 										+ Kd_xAngle*derivative_xAngle);
-// 	
-// 
-// 	// Joystick yAngle
-// 	error_yAngle = yAngle_des - yAngle;
-// 	integral_yAngle = integral_yAngle_prev + error_yAngle*dt;
-// 	if (channel_1_pwm < 1060) {
-// 		// don't let integrator build if throttle is too low
-// 		integral_yAngle = 0;
-// 	}
-// 	integral_yAngle = constrain(integral_yAngle, -i_limit, i_limit); // Saturate integrator to prevent
-// 																																	 //unsafe buildup
-// 	derivative_yAngle = (error_yAngle - error_yAngle_prev)/dt;
-// 	yAngle_PID = 0.01*(Kp_yAngle*error_yAngle
-// 										+ Ki_yAngle*integral_yAngle
-// 										+ Kd_yAngle*derivative_yAngle);
-// 
-//   //Update roll variables
-//   integral_roll_prev = integral_roll;
-//   //Update pitch variables
-//   integral_pitch_prev = integral_pitch;
-//   //Update yaw variables
-//   error_yaw_prev = error_yaw;
-//   integral_yaw_prev = integral_yaw;
-// 	// Update xAngle variables
-// 	error_xAngle_prev = error_xAngle;
-// 	integral_xAngle_prev = integral_xAngle;
-// 	// Update yAngle variables
-// 	error_yAngle_prev = error_yAngle;
-// 	integral_yAngle_prev = integral_yAngle;
-// }
 
 void controlANGLE2() {
   //DESCRIPTION: Computes control commands based on state error (angle) in cascaded scheme
