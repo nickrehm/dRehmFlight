@@ -298,7 +298,8 @@ int m1_command_PWM, m2_command_PWM, m3_command_PWM, m4_command_PWM, m5_command_P
 float s1_command_scaled, s2_command_scaled, s3_command_scaled, s4_command_scaled, s5_command_scaled, s6_command_scaled, s7_command_scaled;
 int s1_command_PWM, s2_command_PWM, s3_command_PWM, s4_command_PWM, s5_command_PWM, s6_command_PWM, s7_command_PWM;
 
-
+//Flight status
+bool armedFly = false;
 
 //========================================================================================================================//
 //                                                      VOID SETUP                                                        //                           
@@ -405,6 +406,9 @@ void loop() {
   //printServoCommands(); //Prints the values being written to the servos (expected: 0 to 180)
   //printLoopRate();      //Prints the time between loops in microseconds (expected: microseconds between loop iterations)
 
+  // Get arming status
+  armedStatus(); //Check if the throttle cut is off and throttle is low.
+
   //Get vehicle state
   getIMUdata(); //Pulls raw gyro, accelerometer, and magnetometer data from IMU and LP filters to remove noise
   Madgwick(GyroX, -GyroY, -GyroZ, -AccX, AccY, AccZ, MagY, -MagX, MagZ, dt); //Updates roll_IMU, pitch_IMU, and yaw_IMU angle estimates (degrees)
@@ -484,6 +488,13 @@ void controlMixer() {
   s6_command_scaled = 0;
   s7_command_scaled = 0;
  
+}
+
+void armedStatus() {
+  //DESCRIPTION: Check if the throttle cut is off and the throttle input is low to prepare for flight.
+  if ((channel_5_pwm < 1500) && (channel_1_pwm < 1050)) {
+    armedFly = true;
+  }
 }
 
 void IMUinit() {
@@ -1436,19 +1447,23 @@ void switchRollYaw(int reverseRoll, int reverseYaw) {
 void throttleCut() {
   //DESCRIPTION: Directly set actuator outputs to minimum value if triggered
   /*
-   * Monitors the state of radio command channel_5_pwm and directly sets the mx_command_PWM values to minimum (120 is
-   * minimum for oneshot125 protocol, 0 is minimum for standard PWM servo library used) if channel 5 is high. This is the last function 
-   * called before commandMotors() is called so that the last thing checked is if the user is giving permission to command
-   * the motors to anything other than minimum value. Safety first. 
-   */
-  if (channel_5_pwm > 1500) {
+      Monitors the state of radio command channel_5_pwm and directly sets the mx_command_PWM values to minimum (120 is
+      minimum for oneshot125 protocol, 0 is minimum for standard PWM servo library used) if channel 5 is high. This is the last function
+      called before commandMotors() is called so that the last thing checked is if the user is giving permission to command
+      the motors to anything other than minimum value. Safety first.
+
+      channel_5_pwm is LOW then throttle cut is OFF and throttle value can change. (ThrottleCut is DEACTIVATED)
+      channel_5_pwm is HIGH then throttle cut is ON and throttle value = 120 only. (ThrottleCut is ACTIVATED), (drone is DISARMED)
+  */
+  if ((channel_5_pwm > 1500) || (armedFly == false)) {
+    armedFly = false;
     m1_command_PWM = 120;
     m2_command_PWM = 120;
     m3_command_PWM = 120;
     m4_command_PWM = 120;
     m5_command_PWM = 120;
     m6_command_PWM = 120;
-    
+
     //Uncomment if using servo PWM variables to control motor ESCs
     //s1_command_PWM = 0;
     //s2_command_PWM = 0;
