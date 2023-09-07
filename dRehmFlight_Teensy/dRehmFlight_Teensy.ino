@@ -370,16 +370,19 @@ void loop() {
   loopBlink(); //Indicate we are in main loop with short blink every 1.5 seconds
 
   //Print data at 100hz (uncomment one at a time for troubleshooting) - SELECT ONE:
-  printRadioData();     //Prints radio pwm values (expected: 1000 to 2000)
-  printDesiredState();  //Prints desired vehicle state commanded in either degrees or deg/sec (expected: +/- maxAXIS for roll, pitch, yaw; 0 to 1 for throttle)
-  printGyroData();      //Prints filtered gyro data direct from IMU (expected: ~ -250 to 250, 0 at rest)
-  printAccelData();     //Prints filtered accelerometer data direct from IMU (expected: ~ -2 to 2; x,y 0 when level, z 1 when level)
-  printMagData();       //Prints filtered magnetometer data direct from IMU (expected: ~ -300 to 300)
-  printRollPitchYaw();  //Prints roll, pitch, and yaw angles in degrees from Madgwick filter (expected: degrees, 0 when level)
-  printPIDoutput();     //Prints computed stabilized PID variables from controller and desired setpoint (expected: ~ -1 to 1)
-  printMotorCommands(); //Prints the values being written to the motors (expected: 120 to 250)
-  printServoCommands(); //Prints the values being written to the servos (expected: 0 to 180)
-  printLoopRate();      //Prints the time between loops in microseconds (expected: microseconds between loop iterations)
+  if (current_time - print_counter > 10000) {
+    print_counter = micros();
+    printRadioData();     //Prints radio pwm values (expected: 1000 to 2000)
+    printDesiredState();  //Prints desired vehicle state commanded in either degrees or deg/sec (expected: +/- maxAXIS for roll, pitch, yaw; 0 to 1 for throttle)
+    printGyroData();      //Prints filtered gyro data direct from IMU (expected: ~ -250 to 250, 0 at rest)
+    printAccelData();     //Prints filtered accelerometer data direct from IMU (expected: ~ -2 to 2; x,y 0 when level, z 1 when level)
+    printMagData();       //Prints filtered magnetometer data direct from IMU (expected: ~ -300 to 300)
+    printRollPitchYaw();  //Prints roll, pitch, and yaw angles in degrees from Madgwick filter (expected: degrees, 0 when level)
+    printPIDoutput();     //Prints computed stabilized PID variables from controller and desired setpoint (expected: ~ -1 to 1)
+    printMotorCommands(); //Prints the values being written to the motors (expected: 120 to 250)
+    printServoCommands(); //Prints the values being written to the servos (expected: 0 to 180)
+    printLoopRate();      //Prints the time between loops in microseconds (expected: microseconds between loop iterations)
+  }
 
   // Get arming status
   armedStatus(); //Check if the throttle cut is off and throttle is low.
@@ -1551,119 +1554,89 @@ void setupBlink(int numBlinks,int upTime, int downTime) {
 }
 
 void printVar(String var, int value) {
-    Serial.print(var);
-    Serial.print(":");
-    Serial.print(channel_1_pwm);
-    Serial.print(",");
+  Serial.print(var);
+  Serial.print(":");
+  Serial.print(channel_1_pwm);
+  Serial.print(",");
 }
 
 void printRadioData() {
-  if (current_time - print_counter > 10000) {
-    print_counter = micros();
-    printVar("CH1", channel_1_pwm);
-    printVar("CH2", channel_2_pwm);
-    printVar("CH3", channel_3_pwm);
-    printVar("CH4", channel_4_pwm);
-    printVar("CH5", channel_5_pwm);
-    printVar("CH6", channel_6_pwm);
-    Serial.println();
-  }
+  printVar("CH1", channel_1_pwm);
+  printVar("CH2", channel_2_pwm);
+  printVar("CH3", channel_3_pwm);
+  printVar("CH4", channel_4_pwm);
+  printVar("CH5", channel_5_pwm);
+  printVar("CH6", channel_6_pwm);
+  Serial.println();
 }
 
 void printDesiredState() {
-  if (current_time - print_counter > 10000) {
-    print_counter = micros();
-    printVar("thro_des",thro_des);
-    printVar("roll_des",roll_des);
-    printVar("pitch_des",pitch_des);
-    printVar("yaw_des",yaw_des);
-    Serial.println();
-  }
+  printVar("thro_des",thro_des);
+  printVar("roll_des",roll_des);
+  printVar("pitch_des",pitch_des);
+  printVar("yaw_des",yaw_des);
+  Serial.println();
 }
 
 void printGyroData() {
-  if (current_time - print_counter > 10000) {
-    print_counter = micros();
-    printVar("GyroX",GyroX);
-    printVar("GyroY",GyroY);
-    printVar("GyroZ",GyroZ);
-    Serial.println();
-  }
+  printVar("GyroX",GyroX);
+  printVar("GyroY",GyroY);
+  printVar("GyroZ",GyroZ);
+  Serial.println();
 }
 
 void printAccelData() {
-  if (current_time - print_counter > 10000) {
-    print_counter = micros();
-    printVar("AccX",AccX);
-    printVar("AccY",AccY);
-    printVar("AccZ",AccZ);
-    Serial.println(AccZ);
-  }
+  printVar("AccX",AccX);
+  printVar("AccY",AccY);
+  printVar("AccZ",AccZ);
+  Serial.println(AccZ);
 }
 
 void printMagData() {
-  if (current_time - print_counter > 10000) {
-    print_counter = micros();
-    printVar("MagX",MagX);
-    printVar("MagY",MagY);
-    printVar("MagZ",MagZ);
-    Serial.println();
-  }
+  printVar("MagX",MagX);
+  printVar("MagY",MagY);
+  printVar("MagZ",MagZ);
+  Serial.println();
 }
 
 void printRollPitchYaw() {
-  if (current_time - print_counter > 10000) {
-    print_counter = micros();
-    printVar("roll",roll_IMU);
-    printVar("pitch",pitch_IMU);
-    printVar("yaw",yaw_IMU);
-    Serial.println();
-  }
+  printVar("roll",roll_IMU);
+  printVar("pitch",pitch_IMU);
+  printVar("yaw",yaw_IMU);
+  Serial.println();
 }
 
 void printPIDoutput() {
-  if (current_time - print_counter > 10000) {
-    print_counter = micros();
-    printVar("roll_PID",roll_PID);
-    printVar("pitch_PID",pitch_PID);
-    printVar("yaw_PID",yaw_PID);
-    Serial.println();
-  }
+  printVar("roll_PID",roll_PID);
+  printVar("pitch_PID",pitch_PID);
+  printVar("yaw_PID",yaw_PID);
+  Serial.println();
 }
 
 void printMotorCommands() {
-  if (current_time - print_counter > 10000) {
-    print_counter = micros();
-    printVar("m1_command",m1_command_PWM);
-    printVar("m2_command",m2_command_PWM);
-    printVar("m3_command",m3_command_PWM);
-    printVar("m4_command",m4_command_PWM);
-    printVar("m5_command",m5_command_PWM);
-    printVar("m6_command",m6_command_PWM);
-    Serial.println();
-  }
+  printVar("m1_command",m1_command_PWM);
+  printVar("m2_command",m2_command_PWM);
+  printVar("m3_command",m3_command_PWM);
+  printVar("m4_command",m4_command_PWM);
+  printVar("m5_command",m5_command_PWM);
+  printVar("m6_command",m6_command_PWM);
+  Serial.println();
 }
 
 void printServoCommands() {
-  if (current_time - print_counter > 10000) {
-    print_counter = micros();
-    printVar("s1_command",s1_command_PWM);
-    printVar("s2_command",s2_command_PWM);
-    printVar("s3_command",s3_command_PWM);
-    printVar("s4_command",s4_command_PWM);
-    printVar("s5_command",s5_command_PWM);
-    printVar("s6_command",s6_command_PWM);
-    printVar("s7_command",s7_command_PWM);
-    Serial.println();
-  }
+  printVar("s1_command",s1_command_PWM);
+  printVar("s2_command",s2_command_PWM);
+  printVar("s3_command",s3_command_PWM);
+  printVar("s4_command",s4_command_PWM);
+  printVar("s5_command",s5_command_PWM);
+  printVar("s6_command",s6_command_PWM);
+  printVar("s7_command",s7_command_PWM);
+  Serial.println();
 }
 
 void printLoopRate() {
-  if (current_time - print_counter > 10000) {
-    print_counter = micros();
-    printVar("dt = ",dt*1000000.0);
-    Serial.println();
-  }
+  printVar("dt = ",dt*1000000.0);
+  Serial.println();
 }
 
 //=========================================================================================//
