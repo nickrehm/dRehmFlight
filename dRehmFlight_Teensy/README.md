@@ -6,7 +6,10 @@ Version: Beta 1.3
  
 ========================================================================================================================
 
-CREDITS + SPECIAL THANKS
+# Data visualization
+The arduino serial plotter is limited to 8 channels. To view all use a tool like https://sekigon-gonnoc.github.io/web-serial-plotter/
+
+# CREDITS + SPECIAL THANKS
 
 Some elements inspired by:
 http://www.brokking.net/ymfc-32_main.html
