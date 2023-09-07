@@ -3,9 +3,9 @@
 //========================================================================================================================//
 
 //Uncomment only one receiver type
-#define USE_PWM_RX
+// #define USE_PWM_RX
 //#define USE_PPM_RX
-//#define USE_SBUS_RX
+#define USE_SBUS_RX
 //#define USE_DSM_RX
 static const uint8_t num_DSM_channels = 6; //If using DSM RX, change this to match the number of transmitter channels you have
 
@@ -279,8 +279,10 @@ bool armedFly = false;
 
 void setup() {
   Serial.begin(500000); //USB serial
-  delay(500);
+  // delay(500);
   
+  Serial.println("dRehmFlight 1.4");
+
   //Initialize all pins
   pinMode(13, OUTPUT); //Pin 13 LED blinker on board, do not modify 
   pinMode(m1Pin, OUTPUT);
@@ -350,6 +352,7 @@ void setup() {
   //If using MPU9250 IMU, uncomment for one-time magnetometer calibration (may need to repeat for new locations)
   //calibrateMagnetometer(); //Generates magentometer error and scale factors to be pasted in user-specified variables section
 
+  Serial.println("ready");
 }
 
 
@@ -367,16 +370,16 @@ void loop() {
   loopBlink(); //Indicate we are in main loop with short blink every 1.5 seconds
 
   //Print data at 100hz (uncomment one at a time for troubleshooting) - SELECT ONE:
-  //printRadioData();     //Prints radio pwm values (expected: 1000 to 2000)
-  //printDesiredState();  //Prints desired vehicle state commanded in either degrees or deg/sec (expected: +/- maxAXIS for roll, pitch, yaw; 0 to 1 for throttle)
-  //printGyroData();      //Prints filtered gyro data direct from IMU (expected: ~ -250 to 250, 0 at rest)
-  //printAccelData();     //Prints filtered accelerometer data direct from IMU (expected: ~ -2 to 2; x,y 0 when level, z 1 when level)
-  //printMagData();       //Prints filtered magnetometer data direct from IMU (expected: ~ -300 to 300)
-  //printRollPitchYaw();  //Prints roll, pitch, and yaw angles in degrees from Madgwick filter (expected: degrees, 0 when level)
-  //printPIDoutput();     //Prints computed stabilized PID variables from controller and desired setpoint (expected: ~ -1 to 1)
-  //printMotorCommands(); //Prints the values being written to the motors (expected: 120 to 250)
-  //printServoCommands(); //Prints the values being written to the servos (expected: 0 to 180)
-  //printLoopRate();      //Prints the time between loops in microseconds (expected: microseconds between loop iterations)
+  printRadioData();     //Prints radio pwm values (expected: 1000 to 2000)
+  printDesiredState();  //Prints desired vehicle state commanded in either degrees or deg/sec (expected: +/- maxAXIS for roll, pitch, yaw; 0 to 1 for throttle)
+  printGyroData();      //Prints filtered gyro data direct from IMU (expected: ~ -250 to 250, 0 at rest)
+  printAccelData();     //Prints filtered accelerometer data direct from IMU (expected: ~ -2 to 2; x,y 0 when level, z 1 when level)
+  printMagData();       //Prints filtered magnetometer data direct from IMU (expected: ~ -300 to 300)
+  printRollPitchYaw();  //Prints roll, pitch, and yaw angles in degrees from Madgwick filter (expected: degrees, 0 when level)
+  printPIDoutput();     //Prints computed stabilized PID variables from controller and desired setpoint (expected: ~ -1 to 1)
+  printMotorCommands(); //Prints the values being written to the motors (expected: 120 to 250)
+  printServoCommands(); //Prints the values being written to the servos (expected: 0 to 180)
+  printLoopRate();      //Prints the time between loops in microseconds (expected: microseconds between loop iterations)
 
   // Get arming status
   armedStatus(); //Check if the throttle cut is off and throttle is low.
@@ -1570,37 +1573,30 @@ void printRadioData() {
 void printDesiredState() {
   if (current_time - print_counter > 10000) {
     print_counter = micros();
-    Serial.print(F("thro_des: "));
-    Serial.print(thro_des);
-    Serial.print(F(" roll_des: "));
-    Serial.print(roll_des);
-    Serial.print(F(" pitch_des: "));
-    Serial.print(pitch_des);
-    Serial.print(F(" yaw_des: "));
-    Serial.println(yaw_des);
+    printVar("thro_des",thro_des);
+    printVar("roll_des",roll_des);
+    printVar("pitch_des",pitch_des);
+    printVar("yaw_des",yaw_des);
+    Serial.println();
   }
 }
 
 void printGyroData() {
   if (current_time - print_counter > 10000) {
     print_counter = micros();
-    Serial.print(F("GyroX: "));
-    Serial.print(GyroX);
-    Serial.print(F(" GyroY: "));
-    Serial.print(GyroY);
-    Serial.print(F(" GyroZ: "));
-    Serial.println(GyroZ);
+    printVar("GyroX",GyroX);
+    printVar("GyroY",GyroY);
+    printVar("GyroZ",GyroZ);
+    Serial.println();
   }
 }
 
 void printAccelData() {
   if (current_time - print_counter > 10000) {
     print_counter = micros();
-    Serial.print(F("AccX: "));
-    Serial.print(AccX);
-    Serial.print(F(" AccY: "));
-    Serial.print(AccY);
-    Serial.print(F(" AccZ: "));
+    printVar("AccX",AccX);
+    printVar("AccY",AccY);
+    printVar("AccZ",AccZ);
     Serial.println(AccZ);
   }
 }
@@ -1608,82 +1604,65 @@ void printAccelData() {
 void printMagData() {
   if (current_time - print_counter > 10000) {
     print_counter = micros();
-    Serial.print(F("MagX: "));
-    Serial.print(MagX);
-    Serial.print(F(" MagY: "));
-    Serial.print(MagY);
-    Serial.print(F(" MagZ: "));
-    Serial.println(MagZ);
+    printVar("MagX",MagX);
+    printVar("MagY",MagY);
+    printVar("MagZ",MagZ);
+    Serial.println();
   }
 }
 
 void printRollPitchYaw() {
   if (current_time - print_counter > 10000) {
     print_counter = micros();
-    Serial.print(F("roll: "));
-    Serial.print(roll_IMU);
-    Serial.print(F(" pitch: "));
-    Serial.print(pitch_IMU);
-    Serial.print(F(" yaw: "));
-    Serial.println(yaw_IMU);
+    printVar("roll",roll_IMU);
+    printVar("pitch",pitch_IMU);
+    printVar("yaw",yaw_IMU);
+    Serial.println();
   }
 }
 
 void printPIDoutput() {
   if (current_time - print_counter > 10000) {
     print_counter = micros();
-    Serial.print(F("roll_PID: "));
-    Serial.print(roll_PID);
-    Serial.print(F(" pitch_PID: "));
-    Serial.print(pitch_PID);
-    Serial.print(F(" yaw_PID: "));
-    Serial.println(yaw_PID);
+    printVar("roll_PID",roll_PID);
+    printVar("pitch_PID",pitch_PID);
+    printVar("yaw_PID",yaw_PID);
+    Serial.println();
   }
 }
 
 void printMotorCommands() {
   if (current_time - print_counter > 10000) {
     print_counter = micros();
-    Serial.print(F("m1_command: "));
-    Serial.print(m1_command_PWM);
-    Serial.print(F(" m2_command: "));
-    Serial.print(m2_command_PWM);
-    Serial.print(F(" m3_command: "));
-    Serial.print(m3_command_PWM);
-    Serial.print(F(" m4_command: "));
-    Serial.print(m4_command_PWM);
-    Serial.print(F(" m5_command: "));
-    Serial.print(m5_command_PWM);
-    Serial.print(F(" m6_command: "));
-    Serial.println(m6_command_PWM);
+    printVar("m1_command",m1_command_PWM);
+    printVar("m2_command",m2_command_PWM);
+    printVar("m3_command",m3_command_PWM);
+    printVar("m4_command",m4_command_PWM);
+    printVar("m5_command",m5_command_PWM);
+    printVar("m6_command",m6_command_PWM);
+    Serial.println();
   }
 }
 
 void printServoCommands() {
   if (current_time - print_counter > 10000) {
     print_counter = micros();
-    Serial.print(F("s1_command: "));
-    Serial.print(s1_command_PWM);
-    Serial.print(F(" s2_command: "));
-    Serial.print(s2_command_PWM);
-    Serial.print(F(" s3_command: "));
-    Serial.print(s3_command_PWM);
-    Serial.print(F(" s4_command: "));
-    Serial.print(s4_command_PWM);
-    Serial.print(F(" s5_command: "));
-    Serial.print(s5_command_PWM);
-    Serial.print(F(" s6_command: "));
-    Serial.print(s6_command_PWM);
-    Serial.print(F(" s7_command: "));
-    Serial.println(s7_command_PWM);
+    printVar("s1_command",s1_command_PWM);
+    printVar("s2_command",s2_command_PWM);
+    printVar("s3_command",s3_command_PWM);
+    printVar("s4_command",s4_command_PWM);
+    printVar("s5_command",s5_command_PWM);
+    printVar("s6_command",s6_command_PWM);
+    printVar("s7_command",s7_command_PWM);
+    Serial.println();
   }
 }
 
 void printLoopRate() {
   if (current_time - print_counter > 10000) {
     print_counter = micros();
-    Serial.print(F("dt = "));
-    Serial.println(dt*1000000.0);
+    printVar("dt = ",dt*1000000.0);
+    Serial.println();
   }
 }
 
@@ -1692,23 +1671,5 @@ void printLoopRate() {
 //HELPER FUNCTIONS
 
 float invSqrt(float x) {
-  //Fast inverse sqrt for madgwick filter
-  /*
-  float halfx = 0.5f * x;
-  float y = x;
-  long i = *(long*)&y;
-  i = 0x5f3759df - (i>>1);
-  y = *(float*)&i;
-  y = y * (1.5f - (halfx * y * y));
-  y = y * (1.5f - (halfx * y * y));
-  return y;
-  */
-  /*
-  //alternate form:
-  unsigned int i = 0x5F1F1412 - (*(unsigned int*)&x >> 1);
-  float tmp = *(float*)&i;
-  float y = tmp * (1.69000231f - 0.714158168f * x * tmp * tmp);
-  return y;
-  */
-  return 1.0/sqrtf(x); //Teensy is fast enough to just take the compute penalty lol suck it arduino nano
+  return 1.0/sqrtf(x);
 }
