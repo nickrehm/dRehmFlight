@@ -382,6 +382,8 @@ void loop() {
     printMotorCommands(); //Prints the values being written to the motors (expected: 120 to 250)
     printServoCommands(); //Prints the values being written to the servos (expected: 0 to 180)
     printLoopRate();      //Prints the time between loops in microseconds (expected: microseconds between loop iterations)
+    
+    Serial.println();
   }
 
   // Get arming status
@@ -1567,7 +1569,6 @@ void printRadioData() {
   printVar("CH4", channel_4_pwm);
   printVar("CH5", channel_5_pwm);
   printVar("CH6", channel_6_pwm);
-  Serial.println();
 }
 
 void printDesiredState() {
@@ -1575,42 +1576,36 @@ void printDesiredState() {
   printVar("roll_des",roll_des);
   printVar("pitch_des",pitch_des);
   printVar("yaw_des",yaw_des);
-  Serial.println();
 }
 
 void printGyroData() {
   printVar("GyroX",GyroX);
   printVar("GyroY",GyroY);
   printVar("GyroZ",GyroZ);
-  Serial.println();
 }
 
 void printAccelData() {
   printVar("AccX",AccX);
   printVar("AccY",AccY);
   printVar("AccZ",AccZ);
-  Serial.println(AccZ);
 }
 
 void printMagData() {
   printVar("MagX",MagX);
   printVar("MagY",MagY);
   printVar("MagZ",MagZ);
-  Serial.println();
 }
 
 void printRollPitchYaw() {
   printVar("roll",roll_IMU);
   printVar("pitch",pitch_IMU);
   printVar("yaw",yaw_IMU);
-  Serial.println();
 }
 
 void printPIDoutput() {
   printVar("roll_PID",roll_PID);
   printVar("pitch_PID",pitch_PID);
   printVar("yaw_PID",yaw_PID);
-  Serial.println();
 }
 
 void printMotorCommands() {
@@ -1620,7 +1615,6 @@ void printMotorCommands() {
   printVar("m4_command",m4_command_PWM);
   printVar("m5_command",m5_command_PWM);
   printVar("m6_command",m6_command_PWM);
-  Serial.println();
 }
 
 void printServoCommands() {
@@ -1631,12 +1625,10 @@ void printServoCommands() {
   printVar("s5_command",s5_command_PWM);
   printVar("s6_command",s6_command_PWM);
   printVar("s7_command",s7_command_PWM);
-  Serial.println();
 }
 
 void printLoopRate() {
-  printVar("dt = ",dt*1000000.0);
-  Serial.println();
+  printVar("dt",dt*1000000.0);
 }
 
 //=========================================================================================//
