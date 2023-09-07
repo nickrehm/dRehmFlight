@@ -1547,21 +1547,23 @@ void setupBlink(int numBlinks,int upTime, int downTime) {
   }
 }
 
+void printVar(String var, int value) {
+    Serial.print(var);
+    Serial.print(":");
+    Serial.print(channel_1_pwm);
+    Serial.print(",");
+}
+
 void printRadioData() {
   if (current_time - print_counter > 10000) {
     print_counter = micros();
-    Serial.print(F(" CH1: "));
-    Serial.print(channel_1_pwm);
-    Serial.print(F(" CH2: "));
-    Serial.print(channel_2_pwm);
-    Serial.print(F(" CH3: "));
-    Serial.print(channel_3_pwm);
-    Serial.print(F(" CH4: "));
-    Serial.print(channel_4_pwm);
-    Serial.print(F(" CH5: "));
-    Serial.print(channel_5_pwm);
-    Serial.print(F(" CH6: "));
-    Serial.println(channel_6_pwm);
+    printVar("CH1", channel_1_pwm);
+    printVar("CH2", channel_2_pwm);
+    printVar("CH3", channel_3_pwm);
+    printVar("CH4", channel_4_pwm);
+    printVar("CH5", channel_5_pwm);
+    printVar("CH6", channel_6_pwm);
+    Serial.println();
   }
 }
 
