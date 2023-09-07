@@ -370,7 +370,8 @@ void loop() {
   loopBlink(); //Indicate we are in main loop with short blink every 1.5 seconds
 
   //Print data at 100hz (uncomment one at a time for troubleshooting) - SELECT ONE:
-  if (current_time - print_counter > 10000) {
+  const int updateInterval = 100 * 100;
+  if (current_time - print_counter > updateInterval) {
     print_counter = micros();
     printRadioData();     //Prints radio pwm values (expected: 1000 to 2000)
     printDesiredState();  //Prints desired vehicle state commanded in either degrees or deg/sec (expected: +/- maxAXIS for roll, pitch, yaw; 0 to 1 for throttle)
@@ -382,7 +383,7 @@ void loop() {
     printMotorCommands(); //Prints the values being written to the motors (expected: 120 to 250)
     printServoCommands(); //Prints the values being written to the servos (expected: 0 to 180)
     printLoopRate();      //Prints the time between loops in microseconds (expected: microseconds between loop iterations)
-    
+
     Serial.println();
   }
 
@@ -1558,8 +1559,8 @@ void setupBlink(int numBlinks,int upTime, int downTime) {
 void printVar(String var, int value) {
   Serial.print(var);
   Serial.print(":");
-  Serial.print(channel_1_pwm);
-  Serial.print(",");
+  Serial.print(value);
+  Serial.print(","); // , \t, space
 }
 
 void printRadioData() {
@@ -1609,22 +1610,22 @@ void printPIDoutput() {
 }
 
 void printMotorCommands() {
-  printVar("m1_command",m1_command_PWM);
-  printVar("m2_command",m2_command_PWM);
-  printVar("m3_command",m3_command_PWM);
-  printVar("m4_command",m4_command_PWM);
-  printVar("m5_command",m5_command_PWM);
-  printVar("m6_command",m6_command_PWM);
+  printVar("m1",m1_command_PWM);
+  printVar("m2",m2_command_PWM);
+  printVar("m3",m3_command_PWM);
+  printVar("m4",m4_command_PWM);
+  printVar("m5",m5_command_PWM);
+  printVar("m6",m6_command_PWM);
 }
 
 void printServoCommands() {
-  printVar("s1_command",s1_command_PWM);
-  printVar("s2_command",s2_command_PWM);
-  printVar("s3_command",s3_command_PWM);
-  printVar("s4_command",s4_command_PWM);
-  printVar("s5_command",s5_command_PWM);
-  printVar("s6_command",s6_command_PWM);
-  printVar("s7_command",s7_command_PWM);
+  printVar("s1",s1_command_PWM);
+  printVar("s2",s2_command_PWM);
+  printVar("s3",s3_command_PWM);
+  printVar("s4",s4_command_PWM);
+  printVar("s5",s5_command_PWM);
+  printVar("s6",s6_command_PWM);
+  printVar("s7",s7_command_PWM);
 }
 
 void printLoopRate() {
