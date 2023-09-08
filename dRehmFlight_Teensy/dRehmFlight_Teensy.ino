@@ -25,7 +25,9 @@ static const uint8_t num_DSM_channels = 6; //If using DSM RX, change this to mat
 //#define ACCEL_8G
 //#define ACCEL_16G
 
-
+// Taranis-Plus and X4R-SBChannel mapping [1,2,3,4,5,6]
+// Turnigy Channel mapping [3,1,2,4,5,6]
+const int sbusMapping[] = {3,1,2,4,5,6};
 
 //========================================================================================================================//
 
@@ -1166,12 +1168,12 @@ void getCommands() {
       //sBus scaling below is for Taranis-Plus and X4R-SB
       float scale = 0.615;  
       float bias  = 895.0; 
-      channel_1_pwm = sbusChannels[0] * scale + bias;
-      channel_2_pwm = sbusChannels[1] * scale + bias;
-      channel_3_pwm = sbusChannels[2] * scale + bias;
-      channel_4_pwm = sbusChannels[3] * scale + bias;
-      channel_5_pwm = sbusChannels[4] * scale + bias;
-      channel_6_pwm = sbusChannels[5] * scale + bias; 
+      channel_1_pwm = sbusChannels[sbusMapping[0]-1] * scale + bias;
+      channel_2_pwm = sbusChannels[sbusMapping[1]-1] * scale + bias;
+      channel_3_pwm = sbusChannels[sbusMapping[2]-1] * scale + bias;
+      channel_4_pwm = sbusChannels[sbusMapping[3]-1] * scale + bias;
+      channel_5_pwm = sbusChannels[sbusMapping[4]-1] * scale + bias;
+      channel_6_pwm = sbusChannels[sbusMapping[5]-1] * scale + bias; 
     }
 
   #elif defined USE_DSM_RX
