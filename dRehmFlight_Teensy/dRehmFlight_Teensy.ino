@@ -373,6 +373,7 @@ void loop() {
   const int updateInterval = 100 * 100;
   if (current_time - print_counter > updateInterval) {
     print_counter = micros();
+    printVar("armed", armedFly);
     printRadioData();     //Prints radio pwm values (expected: 1000 to 2000)
     printDesiredState();  //Prints desired vehicle state commanded in either degrees or deg/sec (expected: +/- maxAXIS for roll, pitch, yaw; 0 to 1 for throttle)
     printGyroData();      //Prints filtered gyro data direct from IMU (expected: ~ -250 to 250, 0 at rest)
