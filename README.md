@@ -1,3 +1,12 @@
+Flight controller for the Minion
+
+![minion](https://raw.githubusercontent.com/hoffmannmatheus/dRehmFlight/main/minion.jpg)
+
+First Flight: https://youtu.be/dd2HGMvTOR4
+
+--- 
+Original readme:
+
 ![dRehmFlight Logo](https://github.com/nickrehm/dRehmFlight/blob/master/dRehmFlight%20Logo.png)
 
 [Intro Video](https://www.youtube.com/watch?v=tlD0C5CrWcA&lc=Ugx6m02xjHk8QH19vd94AaABAg)
