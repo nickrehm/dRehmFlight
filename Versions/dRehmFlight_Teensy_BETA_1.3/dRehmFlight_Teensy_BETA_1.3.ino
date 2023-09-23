@@ -417,9 +417,23 @@ void loop() {
   getDesState(); //Convert raw commands to normalized values based on saturated control limits
   
   //PID Controller - SELECT ONE:
-  controlANGLE(); //Stabilize on angle setpoint
+  //controlANGLE(); //Stabilize on angle setpoint
   //controlANGLE2(); //Stabilize on angle setpoint using cascaded method. Rate controller must be tuned well first!
   //controlRATE(); //Stabilize on rate setpoint
+
+  if (channel_6_pwm > 1800) {
+    maxRoll = 15.0;
+    maxPitch = 15.0;
+    maxYaw = 190.0;
+    controlANGLE();
+  } else {
+    maxRoll = 220.0;
+    maxPitch = 220.0;
+    maxYaw = 190.0;
+    controlRATE();
+  }
+
+
 
   //Actuator mixing and scaling to PWM values
   controlMixer(); //Mixes PID outputs to scaled actuator commands -- custom mixing assignments done here
