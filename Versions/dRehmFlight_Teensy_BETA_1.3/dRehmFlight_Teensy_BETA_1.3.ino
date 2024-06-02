@@ -181,13 +181,13 @@ float maxRoll = 30.0;     //Max roll angle in degrees for angle mode (maximum ~7
 float maxPitch = 30.0;    //Max pitch angle in degrees for angle mode (maximum ~70 degrees), deg/sec for rate mode
 float maxYaw = 160.0;     //Max yaw rate in deg/sec
 
-float Kp_roll_angle = 0.2;    //Roll P-gain - angle mode 
-float Ki_roll_angle = 0.3;    //Roll I-gain - angle mode
-float Kd_roll_angle = 0.05;   //Roll D-gain - angle mode (has no effect on controlANGLE2)
+float Kp_roll_angle = 0.8;    //Roll P-gain - angle mode 
+float Ki_roll_angle = 0.2;    //Roll I-gain - angle mode
+float Kd_roll_angle = 0.2;   //Roll D-gain - angle mode (has no effect on controlANGLE2)
 float B_loop_roll = 0.9;      //Roll damping term for controlANGLE2(), lower is more damping (must be between 0 to 1)
-float Kp_pitch_angle = 0.2;   //Pitch P-gain - angle mode
-float Ki_pitch_angle = 0.3;   //Pitch I-gain - angle mode
-float Kd_pitch_angle = 0.05;  //Pitch D-gain - angle mode (has no effect on controlANGLE2)
+float Kp_pitch_angle = 0.8;   //Pitch P-gain - angle mode
+float Ki_pitch_angle = 0.2;   //Pitch I-gain - angle mode
+float Kd_pitch_angle = 0.2;  //Pitch D-gain - angle mode (has no effect on controlANGLE2)
 float B_loop_pitch = 0.9;     //Pitch damping term for controlANGLE2(), lower is more damping (must be between 0 to 1)
 
 float Kp_roll_rate = 0.15;    //Roll P-gain - rate mode
@@ -225,6 +225,7 @@ const int m4Pin = 3;
 const int m5Pin = 4;
 const int m6Pin = 5;
 //PWM servo or ESC outputs:
+//start with 6
 const int servo1Pin = 6;
 const int servo2Pin = 7;
 const int servo3Pin = 8;
@@ -298,8 +299,7 @@ int m1_command_PWM, m2_command_PWM, m3_command_PWM, m4_command_PWM, m5_command_P
 float s1_command_scaled, s2_command_scaled, s3_command_scaled, s4_command_scaled, s5_command_scaled, s6_command_scaled, s7_command_scaled;
 int s1_command_PWM, s2_command_PWM, s3_command_PWM, s4_command_PWM, s5_command_PWM, s6_command_PWM, s7_command_PWM;
 
-//Flight status
-bool armedFly = false;
+
 
 //========================================================================================================================//
 //                                                      VOID SETUP                                                        //                           
@@ -311,19 +311,19 @@ void setup() {
   
   //Initialize all pins
   pinMode(13, OUTPUT); //Pin 13 LED blinker on board, do not modify 
-  pinMode(m1Pin, OUTPUT);
-  pinMode(m2Pin, OUTPUT);
-  pinMode(m3Pin, OUTPUT);
-  pinMode(m4Pin, OUTPUT);
-  pinMode(m5Pin, OUTPUT);
-  pinMode(m6Pin, OUTPUT);
+  //pinMode(m1Pin, OUTPUT);
+  //pinMode(m2Pin, OUTPUT);
+  //pinMode(m3Pin, OUTPUT);
+  //pinMode(m4Pin, OUTPUT);
+  //pinMode(m5Pin, OUTPUT);
+  //pinMode(m6Pin, OUTPUT);
   servo1.attach(servo1Pin, 900, 2100); //Pin, min PWM value, max PWM value
   servo2.attach(servo2Pin, 900, 2100);
   servo3.attach(servo3Pin, 900, 2100);
   servo4.attach(servo4Pin, 900, 2100);
-  servo5.attach(servo5Pin, 900, 2100);
-  servo6.attach(servo6Pin, 900, 2100);
-  servo7.attach(servo7Pin, 900, 2100);
+  //servo5.attach(servo5Pin, 900, 2100);
+  //servo6.attach(servo6Pin, 900, 2100);
+  //servo7.attach(servo7Pin, 900, 2100);
 
   //Set built in LED to turn on to signal startup
   digitalWrite(13, HIGH);
@@ -350,10 +350,10 @@ void setup() {
   //calculate_IMU_error(); //Calibration parameters printed to serial monitor. Paste these in the user specified variables section, then comment this out forever.
 
   //Arm servo channels
-  servo1.write(0); //Command servo angle from 0-180 degrees (1000 to 2000 PWM)
-  servo2.write(0); //Set these to 90 for servos if you do not want them to briefly max out on startup
-  servo3.write(0); //Keep these at 0 if you are using servo outputs for motors
-  servo4.write(0);
+  servo1.write(90); //Command servo angle from 0-180 degrees (1000 to 2000 PWM)
+  servo2.write(90); //Set these to 90 for servos if you do not want them to briefly max out on startup
+  servo3.write(90); //Keep these at 0 if you are using servo outputs for motors
+  servo4.write(90);
   servo5.write(0);
   servo6.write(0);
   servo7.write(0);
@@ -403,11 +403,8 @@ void loop() {
   //printRollPitchYaw();  //Prints roll, pitch, and yaw angles in degrees from Madgwick filter (expected: degrees, 0 when level)
   //printPIDoutput();     //Prints computed stabilized PID variables from controller and desired setpoint (expected: ~ -1 to 1)
   //printMotorCommands(); //Prints the values being written to the motors (expected: 120 to 250)
-  //printServoCommands(); //Prints the values being written to the servos (expected: 0 to 180)
+  printServoCommands(); //Prints the values being written to the servos (expected: 0 to 180)
   //printLoopRate();      //Prints the time between loops in microseconds (expected: microseconds between loop iterations)
-
-  // Get arming status
-  armedStatus(); //Check if the throttle cut is off and throttle is low.
 
   //Get vehicle state
   getIMUdata(); //Pulls raw gyro, accelerometer, and magnetometer data from IMU and LP filters to remove noise
@@ -472,29 +469,25 @@ void controlMixer() {
    */
    
   //Quad mixing - EXAMPLE
-  m1_command_scaled = thro_des - pitch_PID + roll_PID + yaw_PID; //Front Left
-  m2_command_scaled = thro_des - pitch_PID - roll_PID - yaw_PID; //Front Right
-  m3_command_scaled = thro_des + pitch_PID - roll_PID + yaw_PID; //Back Right
-  m4_command_scaled = thro_des + pitch_PID + roll_PID - yaw_PID; //Back Left
+  m1_command_scaled = thro_des + yaw_PID; //thro_des - pitch_PID; // + roll_PID + yaw_PID; //Front Left
+  m2_command_scaled = thro_des - yaw_PID; //thro_des - pitch_PID; // - roll_PID - yaw_PID; //Front Right
+  m3_command_scaled = 0;
+  m4_command_scaled = 0;
   m5_command_scaled = 0;
   m6_command_scaled = 0;
 
+  
+  float roll_offset = 0.5;
+  float pitch_offset = 0.5;
   //0.5 is centered servo, 0.0 is zero throttle if connecting to ESC for conventional PWM, 1.0 is max throttle
-  s1_command_scaled = 0;
-  s2_command_scaled = 0;
+  s1_command_scaled = roll_offset - roll_PID;
+  s2_command_scaled = pitch_offset + pitch_PID;
   s3_command_scaled = 0;
   s4_command_scaled = 0;
   s5_command_scaled = 0;
   s6_command_scaled = 0;
   s7_command_scaled = 0;
  
-}
-
-void armedStatus() {
-  //DESCRIPTION: Check if the throttle cut is off and the throttle input is low to prepare for flight.
-  if ((channel_5_pwm < 1500) && (channel_1_pwm < 1050)) {
-    armedFly = true;
-  }
 }
 
 void IMUinit() {
@@ -815,7 +808,7 @@ void Madgwick(float gx, float gy, float gz, float ax, float ay, float az, float 
   
   //compute angles - NWU
   roll_IMU = atan2(q0*q1 + q2*q3, 0.5f - q1*q1 - q2*q2)*57.29577951; //degrees
-  pitch_IMU = -asin(constrain(-2.0f * (q1*q3 - q0*q2),-0.999999,0.999999))*57.29577951; //degrees
+  pitch_IMU = -asin(-2.0f * (q1*q3 - q0*q2))*57.29577951; //degrees
   yaw_IMU = -atan2(q1*q2 + q0*q3, 0.5f - q2*q2 - q3*q3)*57.29577951; //degrees
 }
 
@@ -897,7 +890,7 @@ void Madgwick6DOF(float gx, float gy, float gz, float ax, float ay, float az, fl
 
   //Compute angles
   roll_IMU = atan2(q0*q1 + q2*q3, 0.5f - q1*q1 - q2*q2)*57.29577951; //degrees
-  pitch_IMU = -asin(constrain(-2.0f * (q1*q3 - q0*q2),-0.999999,0.999999))*57.29577951; //degrees
+  pitch_IMU = -asin(-2.0f * (q1*q3 - q0*q2))*57.29577951; //degrees
   yaw_IMU = -atan2(q1*q2 + q0*q3, 0.5f - q2*q2 - q3*q3)*57.29577951; //degrees
 }
 
@@ -1140,8 +1133,10 @@ void scaleCommands() {
   //Scaled to 0-180 for servo library
   s1_command_PWM = s1_command_scaled*180;
   s2_command_PWM = s2_command_scaled*180;
-  s3_command_PWM = s3_command_scaled*180;
-  s4_command_PWM = s4_command_scaled*180;
+  s3_command_PWM = 180 - s1_command_PWM;
+  s4_command_PWM = 180 - s2_command_PWM;
+  //s3_command_PWM = s3_command_scaled*180;
+  //s4_command_PWM = s4_command_scaled*180;
   s5_command_PWM = s5_command_scaled*180;
   s6_command_PWM = s6_command_scaled*180;
   s7_command_PWM = s7_command_scaled*180;
@@ -1269,44 +1264,44 @@ void commandMotors() {
   int flagM6 = 0;
   
   //Write all motor pins high
-  digitalWrite(m1Pin, HIGH);
-  digitalWrite(m2Pin, HIGH);
-  digitalWrite(m3Pin, HIGH);
-  digitalWrite(m4Pin, HIGH);
-  digitalWrite(m5Pin, HIGH);
-  digitalWrite(m6Pin, HIGH);
+  //digitalWrite(m1Pin, HIGH);
+  //digitalWrite(m2Pin, HIGH);
+  //digitalWrite(m3Pin, HIGH);
+  //digitalWrite(m4Pin, HIGH);
+  //digitalWrite(m5Pin, HIGH);
+  //digitalWrite(m6Pin, HIGH);
   pulseStart = micros();
 
   //Write each motor pin low as correct pulse length is reached
   while (wentLow < 6 ) { //Keep going until final (6th) pulse is finished, then done
     timer = micros();
     if ((m1_command_PWM <= timer - pulseStart) && (flagM1==0)) {
-      digitalWrite(m1Pin, LOW);
+      //digitalWrite(m1Pin, LOW);
       wentLow = wentLow + 1;
       flagM1 = 1;
     }
     if ((m2_command_PWM <= timer - pulseStart) && (flagM2==0)) {
-      digitalWrite(m2Pin, LOW);
+      //digitalWrite(m2Pin, LOW);
       wentLow = wentLow + 1;
       flagM2 = 1;
     }
     if ((m3_command_PWM <= timer - pulseStart) && (flagM3==0)) {
-      digitalWrite(m3Pin, LOW);
+      //digitalWrite(m3Pin, LOW);
       wentLow = wentLow + 1;
       flagM3 = 1;
     }
     if ((m4_command_PWM <= timer - pulseStart) && (flagM4==0)) {
-      digitalWrite(m4Pin, LOW);
+      //digitalWrite(m4Pin, LOW);
       wentLow = wentLow + 1;
       flagM4 = 1;
     } 
     if ((m5_command_PWM <= timer - pulseStart) && (flagM5==0)) {
-      digitalWrite(m5Pin, LOW);
+      //digitalWrite(m5Pin, LOW);
       wentLow = wentLow + 1;
       flagM5 = 1;
     } 
     if ((m6_command_PWM <= timer - pulseStart) && (flagM6==0)) {
-      digitalWrite(m6Pin, LOW);
+      //digitalWrite(m6Pin, LOW);
       wentLow = wentLow + 1;
       flagM6 = 1;
     } 
@@ -1447,23 +1442,19 @@ void switchRollYaw(int reverseRoll, int reverseYaw) {
 void throttleCut() {
   //DESCRIPTION: Directly set actuator outputs to minimum value if triggered
   /*
-      Monitors the state of radio command channel_5_pwm and directly sets the mx_command_PWM values to minimum (120 is
-      minimum for oneshot125 protocol, 0 is minimum for standard PWM servo library used) if channel 5 is high. This is the last function
-      called before commandMotors() is called so that the last thing checked is if the user is giving permission to command
-      the motors to anything other than minimum value. Safety first.
-
-      channel_5_pwm is LOW then throttle cut is OFF and throttle value can change. (ThrottleCut is DEACTIVATED)
-      channel_5_pwm is HIGH then throttle cut is ON and throttle value = 120 only. (ThrottleCut is ACTIVATED), (drone is DISARMED)
-  */
-  if ((channel_5_pwm > 1500) || (armedFly == false)) {
-    armedFly = false;
+   * Monitors the state of radio command channel_5_pwm and directly sets the mx_command_PWM values to minimum (120 is
+   * minimum for oneshot125 protocol, 0 is minimum for standard PWM servo library used) if channel 5 is high. This is the last function 
+   * called before commandMotors() is called so that the last thing checked is if the user is giving permission to command
+   * the motors to anything other than minimum value. Safety first. 
+   */
+  if (channel_5_pwm > 1500) {
     m1_command_PWM = 120;
     m2_command_PWM = 120;
     m3_command_PWM = 120;
     m4_command_PWM = 120;
     m5_command_PWM = 120;
     m6_command_PWM = 120;
-
+    
     //Uncomment if using servo PWM variables to control motor ESCs
     //s1_command_PWM = 0;
     //s2_command_PWM = 0;
@@ -1573,17 +1564,17 @@ void setupBlink(int numBlinks,int upTime, int downTime) {
 void printRadioData() {
   if (current_time - print_counter > 10000) {
     print_counter = micros();
-    Serial.print(F(" CH1:"));
+    Serial.print(F(" CH1: "));
     Serial.print(channel_1_pwm);
-    Serial.print(F(" CH2:"));
+    Serial.print(F(" CH2: "));
     Serial.print(channel_2_pwm);
-    Serial.print(F(" CH3:"));
+    Serial.print(F(" CH3: "));
     Serial.print(channel_3_pwm);
-    Serial.print(F(" CH4:"));
+    Serial.print(F(" CH4: "));
     Serial.print(channel_4_pwm);
-    Serial.print(F(" CH5:"));
+    Serial.print(F(" CH5: "));
     Serial.print(channel_5_pwm);
-    Serial.print(F(" CH6:"));
+    Serial.print(F(" CH6: "));
     Serial.println(channel_6_pwm);
   }
 }
@@ -1591,13 +1582,13 @@ void printRadioData() {
 void printDesiredState() {
   if (current_time - print_counter > 10000) {
     print_counter = micros();
-    Serial.print(F("thro_des:"));
+    Serial.print(F("thro_des: "));
     Serial.print(thro_des);
-    Serial.print(F(" roll_des:"));
+    Serial.print(F(" roll_des: "));
     Serial.print(roll_des);
-    Serial.print(F(" pitch_des:"));
+    Serial.print(F(" pitch_des: "));
     Serial.print(pitch_des);
-    Serial.print(F(" yaw_des:"));
+    Serial.print(F(" yaw_des: "));
     Serial.println(yaw_des);
   }
 }
@@ -1605,11 +1596,11 @@ void printDesiredState() {
 void printGyroData() {
   if (current_time - print_counter > 10000) {
     print_counter = micros();
-    Serial.print(F("GyroX:"));
+    Serial.print(F("GyroX: "));
     Serial.print(GyroX);
-    Serial.print(F(" GyroY:"));
+    Serial.print(F(" GyroY: "));
     Serial.print(GyroY);
-    Serial.print(F(" GyroZ:"));
+    Serial.print(F(" GyroZ: "));
     Serial.println(GyroZ);
   }
 }
@@ -1617,11 +1608,11 @@ void printGyroData() {
 void printAccelData() {
   if (current_time - print_counter > 10000) {
     print_counter = micros();
-    Serial.print(F("AccX:"));
+    Serial.print(F("AccX: "));
     Serial.print(AccX);
-    Serial.print(F(" AccY:"));
+    Serial.print(F(" AccY: "));
     Serial.print(AccY);
-    Serial.print(F(" AccZ:"));
+    Serial.print(F(" AccZ: "));
     Serial.println(AccZ);
   }
 }
@@ -1629,11 +1620,11 @@ void printAccelData() {
 void printMagData() {
   if (current_time - print_counter > 10000) {
     print_counter = micros();
-    Serial.print(F("MagX:"));
+    Serial.print(F("MagX: "));
     Serial.print(MagX);
-    Serial.print(F(" MagY:"));
+    Serial.print(F(" MagY: "));
     Serial.print(MagY);
-    Serial.print(F(" MagZ:"));
+    Serial.print(F(" MagZ: "));
     Serial.println(MagZ);
   }
 }
@@ -1641,11 +1632,11 @@ void printMagData() {
 void printRollPitchYaw() {
   if (current_time - print_counter > 10000) {
     print_counter = micros();
-    Serial.print(F("roll:"));
+    Serial.print(F("roll: "));
     Serial.print(roll_IMU);
-    Serial.print(F(" pitch:"));
+    Serial.print(F(" pitch: "));
     Serial.print(pitch_IMU);
-    Serial.print(F(" yaw:"));
+    Serial.print(F(" yaw: "));
     Serial.println(yaw_IMU);
   }
 }
@@ -1653,11 +1644,11 @@ void printRollPitchYaw() {
 void printPIDoutput() {
   if (current_time - print_counter > 10000) {
     print_counter = micros();
-    Serial.print(F("roll_PID:"));
+    Serial.print(F("roll_PID: "));
     Serial.print(roll_PID);
-    Serial.print(F(" pitch_PID:"));
+    Serial.print(F(" pitch_PID: "));
     Serial.print(pitch_PID);
-    Serial.print(F(" yaw_PID:"));
+    Serial.print(F(" yaw_PID: "));
     Serial.println(yaw_PID);
   }
 }
@@ -1665,17 +1656,17 @@ void printPIDoutput() {
 void printMotorCommands() {
   if (current_time - print_counter > 10000) {
     print_counter = micros();
-    Serial.print(F("m1_command:"));
+    Serial.print(F("m1_command: "));
     Serial.print(m1_command_PWM);
-    Serial.print(F(" m2_command:"));
+    Serial.print(F(" m2_command: "));
     Serial.print(m2_command_PWM);
-    Serial.print(F(" m3_command:"));
+    Serial.print(F(" m3_command: "));
     Serial.print(m3_command_PWM);
-    Serial.print(F(" m4_command:"));
+    Serial.print(F(" m4_command: "));
     Serial.print(m4_command_PWM);
-    Serial.print(F(" m5_command:"));
+    Serial.print(F(" m5_command: "));
     Serial.print(m5_command_PWM);
-    Serial.print(F(" m6_command:"));
+    Serial.print(F(" m6_command: "));
     Serial.println(m6_command_PWM);
   }
 }
@@ -1683,27 +1674,35 @@ void printMotorCommands() {
 void printServoCommands() {
   if (current_time - print_counter > 10000) {
     print_counter = micros();
-    Serial.print(F("s1_command:"));
-    Serial.print(s1_command_PWM);
-    Serial.print(F(" s2_command:"));
+    
+    Serial.print(print_counter);
+    Serial.print(F(","));
     Serial.print(s2_command_PWM);
-    Serial.print(F(" s3_command:"));
-    Serial.print(s3_command_PWM);
-    Serial.print(F(" s4_command:"));
-    Serial.print(s4_command_PWM);
-    Serial.print(F(" s5_command:"));
+    Serial.print(F(","));
+    Serial.print(pitch_PID);
+    Serial.print(F(","));
+    Serial.println(pitch_IMU);
+    
+    //Serial.print(F(" s2: "));
+    //Serial.print(s2_command_PWM);
+    //Serial.print(F(" s3: "));
+    //Serial.print(s3_command_PWM);
+    //Serial.print(F(" s4: "));
+    
+    /* Serial.print(F(" s5_command: "));
     Serial.print(s5_command_PWM);
-    Serial.print(F(" s6_command:"));
+    Serial.print(F(" s6_command: "));
     Serial.print(s6_command_PWM);
-    Serial.print(F(" s7_command:"));
+    Serial.print(F(" s7_command: "));
     Serial.println(s7_command_PWM);
+    */
   }
 }
 
 void printLoopRate() {
   if (current_time - print_counter > 10000) {
     print_counter = micros();
-    Serial.print(F("dt:"));
+    Serial.print(F("dt = "));
     Serial.println(dt*1000000.0);
   }
 }
