@@ -377,6 +377,7 @@ void setup() {
 
   //If using MPU9250 IMU, uncomment for one-time magnetometer calibration (may need to repeat for new locations)
   //calibrateMagnetometer(); //Generates magentometer error and scale factors to be pasted in user-specified variables section
+  current_time = micros();      
 
 }
 
