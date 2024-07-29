@@ -31,15 +31,17 @@ Everyone that sends me pictures and videos of your flying creations! -Nick
 //========================================================================================================================//
 
 //Uncomment only one receiver type
-#define USE_PWM_RX
+//#define USE_PWM_RX
 //#define USE_PPM_RX
 //#define USE_SBUS_RX
 //#define USE_DSM_RX
+#define USE_ELRS_RX
 static const uint8_t num_DSM_channels = 6; //If using DSM RX, change this to match the number of transmitter channels you have
 
 //Uncomment only one IMU
-#define USE_MPU6050_I2C //Default
+//#define USE_MPU6050_I2C //Default
 //#define USE_MPU9250_SPI
+#define USE_MPU9250_I2C
 
 //Uncomment only one full scale gyro range (deg/sec)
 #define GYRO_250DPS //Default
@@ -64,6 +66,7 @@ static const uint8_t num_DSM_channels = 6; //If using DSM RX, change this to mat
 #include <Wire.h>     //I2c communication
 #include <SPI.h>      //SPI communication
 #include <PWMServo.h> //Commanding any extra actuators, installed with teensyduino installer
+#include <BME280I2C.h>//Pressure sensor
 
 #if defined USE_SBUS_RX
   #include "src/SBUS/SBUS.h"   //sBus interface
@@ -73,16 +76,33 @@ static const uint8_t num_DSM_channels = 6; //If using DSM RX, change this to mat
   #include "src/DSMRX/DSMRX.h"  
 #endif
 
+#if defined USE_ELRS_RX
+// Setup Radio Rx
+  #include <ArduinoCRSF.h>
+#endif
+
+/*
+I tried to bundle the CRSF library with this code, but I dont know what I am doing and it kept breaking it.
+The CRSF library has been pulled from https://github.com/AlfredoSystems/AlfredoCRSF and has recently had a name change. I have not updated my local copy hence the name mismatch.
+I keep meaning to use this one: https://github.com/ZZ-Cat/CRSFforArduino as it is under active development, but I haven't found the time to play with it. 
+*/
+
 #if defined USE_MPU6050_I2C
   #include "src/MPU6050/MPU6050.h"
   MPU6050 mpu6050;
 #elif defined USE_MPU9250_SPI
   #include "src/MPU9250/MPU9250.h"
   MPU9250 mpu9250(SPI2,36);
+#elif defined USE_MPU9250_I2C
+  #include "src/MPU9250/MPU9250.h"
+  MPU9250 mpu9250(Wire,0x68);
 #else
   #error No MPU defined... 
 #endif
 
+// Setup Pressure sensor
+  BME280I2C bme;
+  #define SEALEVELPRESSURE_HPA (1013.25)
 
 
 //========================================================================================================================//
@@ -101,6 +121,15 @@ static const uint8_t num_DSM_channels = 6; //If using DSM RX, change this to mat
   #define ACCEL_FS_SEL_8     MPU6050_ACCEL_FS_8
   #define ACCEL_FS_SEL_16    MPU6050_ACCEL_FS_16
 #elif defined USE_MPU9250_SPI
+  #define GYRO_FS_SEL_250    mpu9250.GYRO_RANGE_250DPS
+  #define GYRO_FS_SEL_500    mpu9250.GYRO_RANGE_500DPS
+  #define GYRO_FS_SEL_1000   mpu9250.GYRO_RANGE_1000DPS                                                        
+  #define GYRO_FS_SEL_2000   mpu9250.GYRO_RANGE_2000DPS
+  #define ACCEL_FS_SEL_2     mpu9250.ACCEL_RANGE_2G
+  #define ACCEL_FS_SEL_4     mpu9250.ACCEL_RANGE_4G
+  #define ACCEL_FS_SEL_8     mpu9250.ACCEL_RANGE_8G
+  #define ACCEL_FS_SEL_16    mpu9250.ACCEL_RANGE_16G
+#elif defined USE_MPU9250_I2C
   #define GYRO_FS_SEL_250    mpu9250.GYRO_RANGE_250DPS
   #define GYRO_FS_SEL_500    mpu9250.GYRO_RANGE_500DPS
   #define GYRO_FS_SEL_1000   mpu9250.GYRO_RANGE_1000DPS                                                        
@@ -152,6 +181,8 @@ unsigned long channel_3_fs = 1500; //elev
 unsigned long channel_4_fs = 1500; //rudd
 unsigned long channel_5_fs = 2000; //gear, greater than 1500 = throttle cut
 unsigned long channel_6_fs = 2000; //aux1
+unsigned long channel_7_fs = 1500; //aux2
+unsigned long channel_8_fs = 1500; //aux3
 
 //Filter parameters - Defaults tuned for 2kHz loop rate; Do not touch unless you know what you are doing:
 float B_madgwick = 0.04;  //Madgwick filter parameter
@@ -255,8 +286,13 @@ unsigned long print_counter, serial_counter;
 unsigned long blink_counter, blink_delay;
 bool blinkAlternate;
 
+// Atmospherics
+   float temp(NAN), hum(NAN), pres(NAN), presRead(NAN);
+   BME280::TempUnit tempUnit(BME280::TempUnit_Celsius);
+   BME280::PresUnit presUnit(BME280::PresUnit_Pa);
+
 //Radio communication:
-unsigned long channel_1_pwm, channel_2_pwm, channel_3_pwm, channel_4_pwm, channel_5_pwm, channel_6_pwm;
+unsigned long channel_1_pwm, channel_2_pwm, channel_3_pwm, channel_4_pwm, channel_5_pwm, channel_6_pwm, channel_7_pwm, channel_8_pwm;
 unsigned long channel_1_pwm_prev, channel_2_pwm_prev, channel_3_pwm_prev, channel_4_pwm_prev;
 
 #if defined USE_SBUS_RX
@@ -267,6 +303,9 @@ unsigned long channel_1_pwm_prev, channel_2_pwm_prev, channel_3_pwm_prev, channe
 #endif
 #if defined USE_DSM_RX
   DSM1024 DSM;
+#endif
+#if defined USE_ELRS_RX
+  ArduinoCRSF crsf;  //CRSF object
 #endif
 
 //IMU:
@@ -340,9 +379,13 @@ void setup() {
   channel_4_pwm = channel_4_fs;
   channel_5_pwm = channel_5_fs;
   channel_6_pwm = channel_6_fs;
+  channel_7_pwm = channel_7_fs;
+  channel_8_pwm = channel_8_fs;
 
   //Initialize IMU communication
   IMUinit();
+  //Initialise pressure sensor
+  WxInit();
 
   delay(5);
 
@@ -395,7 +438,7 @@ void loop() {
   loopBlink(); //Indicate we are in main loop with short blink every 1.5 seconds
 
   //Print data at 100hz (uncomment one at a time for troubleshooting) - SELECT ONE:
-  //printRadioData();     //Prints radio pwm values (expected: 1000 to 2000)
+  printRadioData();     //Prints radio pwm values (expected: 1000 to 2000)
   //printDesiredState();  //Prints desired vehicle state commanded in either degrees or deg/sec (expected: +/- maxAXIS for roll, pitch, yaw; 0 to 1 for throttle)
   //printGyroData();      //Prints filtered gyro data direct from IMU (expected: ~ -250 to 250, 0 at rest)
   //printAccelData();     //Prints filtered accelerometer data direct from IMU (expected: ~ -2 to 2; x,y 0 when level, z 1 when level)
@@ -405,6 +448,8 @@ void loop() {
   //printMotorCommands(); //Prints the values being written to the motors (expected: 120 to 250)
   //printServoCommands(); //Prints the values being written to the servos (expected: 0 to 180)
   //printLoopRate();      //Prints the time between loops in microseconds (expected: microseconds between loop iterations)
+  //printI2Ccheck();      //Scans the i2c bus for attached devices
+  //printWx();            //Prints the BMP280 data
 
   // Get arming status
   armedStatus(); //Check if the throttle cut is off and throttle is low.
@@ -412,6 +457,7 @@ void loop() {
   //Get vehicle state
   getIMUdata(); //Pulls raw gyro, accelerometer, and magnetometer data from IMU and LP filters to remove noise
   Madgwick(GyroX, -GyroY, -GyroZ, -AccX, AccY, AccZ, MagY, -MagX, MagZ, dt); //Updates roll_IMU, pitch_IMU, and yaw_IMU angle estimates (degrees)
+  getWx();
 
   //Compute desired state
   getDesState(); //Convert raw commands to normalized values based on saturated control limits
@@ -540,6 +586,26 @@ void IMUinit() {
     mpu9250.setMagCalY(MagErrorY, MagScaleY);
     mpu9250.setMagCalZ(MagErrorZ, MagScaleZ);
     mpu9250.setSrd(0); //sets gyro and accel read to 1khz, magnetometer read to 100hz
+
+  #elif defined USE_MPU9250_I2C
+    Wire.begin();
+    Wire.setClock(1000000); //Note this is 2.5 times the spec sheet 400 kHz max...
+    
+    if (!mpu9250.begin()) {
+      Serial.println("MPU9250 initialization unsuccessful");
+      Serial.println("Check MPU9250 wiring or try cycling power");
+      while(1) {}
+    }
+
+    //From the reset state all registers should be 0x00, so we should be at
+    //max sample rate with digital low pass filter(s) off.  All we need to
+    //do is set the desired fullscale ranges
+    mpu9250.setGyroRange(GYRO_SCALE);
+    mpu9250.setAccelRange(ACCEL_SCALE);
+    mpu9250.setMagCalX(MagErrorX, MagScaleX);
+    mpu9250.setMagCalY(MagErrorY, MagScaleY);
+    mpu9250.setMagCalZ(MagErrorZ, MagScaleZ);
+    mpu9250.setSrd(0); //sets gyro and accel read to 1khz, magnetometer read to 100hz
   #endif
 }
 
@@ -558,6 +624,8 @@ void getIMUdata() {
   #if defined USE_MPU6050_I2C
     mpu6050.getMotion6(&AcX, &AcY, &AcZ, &GyX, &GyY, &GyZ);
   #elif defined USE_MPU9250_SPI
+    mpu9250.getMotion9(&AcX, &AcY, &AcZ, &GyX, &GyY, &GyZ, &MgX, &MgY, &MgZ);
+  #elif defined USE_MPU9250_I2C
     mpu9250.getMotion9(&AcX, &AcY, &AcZ, &GyX, &GyY, &GyZ, &MgX, &MgY, &MgZ);
   #endif
 
@@ -608,6 +676,19 @@ void getIMUdata() {
   MagX_prev = MagX;
   MagY_prev = MagY;
   MagZ_prev = MagZ;
+}
+
+void WxInit(){
+  // Start BME sensor
+  while(!bme.begin()){
+    Serial.println("Could not find BME280 sensor!");
+    delay(1000);
+  }
+}
+
+void getWx(){
+  bme.read(pres, temp, hum, tempUnit, presUnit);
+  presRead = pres / 100;
 }
 
 void calculate_IMU_error() {
@@ -815,7 +896,7 @@ void Madgwick(float gx, float gy, float gz, float ax, float ay, float az, float 
   
   //compute angles - NWU
   roll_IMU = atan2(q0*q1 + q2*q3, 0.5f - q1*q1 - q2*q2)*57.29577951; //degrees
-  pitch_IMU = -asin(constrain(-2.0f * (q1*q3 - q0*q2),-0.999999,0.999999))*57.29577951; //degrees
+  pitch_IMU = -asin(-2.0f * (q1*q3 - q0*q2))*57.29577951; //degrees
   yaw_IMU = -atan2(q1*q2 + q0*q3, 0.5f - q2*q2 - q3*q3)*57.29577951; //degrees
 }
 
@@ -897,7 +978,7 @@ void Madgwick6DOF(float gx, float gy, float gz, float ax, float ay, float az, fl
 
   //Compute angles
   roll_IMU = atan2(q0*q1 + q2*q3, 0.5f - q1*q1 - q2*q2)*57.29577951; //degrees
-  pitch_IMU = -asin(constrain(-2.0f * (q1*q3 - q0*q2),-0.999999,0.999999))*57.29577951; //degrees
+  pitch_IMU = -asin(-2.0f * (q1*q3 - q0*q2))*57.29577951; //degrees
   yaw_IMU = -atan2(q1*q2 + q0*q3, 0.5f - q2*q2 - q3*q3)*57.29577951; //degrees
 }
 
@@ -1202,6 +1283,19 @@ void getCommands() {
         channel_5_pwm = values[4];
         channel_6_pwm = values[5];
     }
+  
+  #elif defined USE_ELRS_RX
+    // Read the radio chanels into the system
+      crsf.update();
+      channel_1_pwm = crsf.getChannel(1);
+      channel_2_pwm = crsf.getChannel(2); 
+      channel_3_pwm = crsf.getChannel(3); 
+      channel_4_pwm = crsf.getChannel(4);
+      channel_5_pwm = crsf.getChannel(5);
+      channel_6_pwm = crsf.getChannel(6);
+      channel_7_pwm = crsf.getChannel(7);
+      channel_8_pwm = crsf.getChannel(8);
+  
   #endif
   
   //Low-pass the critical commands and update previous values
@@ -1250,6 +1344,8 @@ void failSafe() {
     channel_4_pwm = channel_4_fs;
     channel_5_pwm = channel_5_fs;
     channel_6_pwm = channel_6_fs;
+    channel_7_pwm = channel_7_fs;
+    channel_8_pwm = channel_8_fs;
   }
 }
 
@@ -1573,31 +1669,35 @@ void setupBlink(int numBlinks,int upTime, int downTime) {
 void printRadioData() {
   if (current_time - print_counter > 10000) {
     print_counter = micros();
-    Serial.print(F(" CH1:"));
+    Serial.print(F(" CH1: "));
     Serial.print(channel_1_pwm);
-    Serial.print(F(" CH2:"));
+    Serial.print(F(" CH2: "));
     Serial.print(channel_2_pwm);
-    Serial.print(F(" CH3:"));
+    Serial.print(F(" CH3: "));
     Serial.print(channel_3_pwm);
-    Serial.print(F(" CH4:"));
+    Serial.print(F(" CH4: "));
     Serial.print(channel_4_pwm);
-    Serial.print(F(" CH5:"));
+    Serial.print(F(" CH5: "));
     Serial.print(channel_5_pwm);
-    Serial.print(F(" CH6:"));
+    Serial.print(F(" CH6: "));
     Serial.println(channel_6_pwm);
+    Serial.print(F(" CH7: "));
+    Serial.print(channel_7_pwm);
+    Serial.print(F(" CH8: "));
+    Serial.println(channel_8_pwm);
   }
 }
 
 void printDesiredState() {
   if (current_time - print_counter > 10000) {
     print_counter = micros();
-    Serial.print(F("thro_des:"));
+    Serial.print(F("thro_des: "));
     Serial.print(thro_des);
-    Serial.print(F(" roll_des:"));
+    Serial.print(F(" roll_des: "));
     Serial.print(roll_des);
-    Serial.print(F(" pitch_des:"));
+    Serial.print(F(" pitch_des: "));
     Serial.print(pitch_des);
-    Serial.print(F(" yaw_des:"));
+    Serial.print(F(" yaw_des: "));
     Serial.println(yaw_des);
   }
 }
@@ -1606,10 +1706,10 @@ void printGyroData() {
   if (current_time - print_counter > 10000) {
     print_counter = micros();
     Serial.print(F("GyroX:"));
-    Serial.print(GyroX);
-    Serial.print(F(" GyroY:"));
-    Serial.print(GyroY);
-    Serial.print(F(" GyroZ:"));
+    Serial.println(GyroX);
+    Serial.print(F("GyroY:"));
+    Serial.println(GyroY);
+    Serial.print(F("GyroZ:"));
     Serial.println(GyroZ);
   }
 }
@@ -1617,11 +1717,11 @@ void printGyroData() {
 void printAccelData() {
   if (current_time - print_counter > 10000) {
     print_counter = micros();
-    Serial.print(F("AccX:"));
+    Serial.print(F("AccX: "));
     Serial.print(AccX);
-    Serial.print(F(" AccY:"));
+    Serial.print(F(" AccY: "));
     Serial.print(AccY);
-    Serial.print(F(" AccZ:"));
+    Serial.print(F(" AccZ: "));
     Serial.println(AccZ);
   }
 }
@@ -1629,11 +1729,11 @@ void printAccelData() {
 void printMagData() {
   if (current_time - print_counter > 10000) {
     print_counter = micros();
-    Serial.print(F("MagX:"));
+    Serial.print(F("MagX: "));
     Serial.print(MagX);
-    Serial.print(F(" MagY:"));
+    Serial.print(F(" MagY: "));
     Serial.print(MagY);
-    Serial.print(F(" MagZ:"));
+    Serial.print(F(" MagZ: "));
     Serial.println(MagZ);
   }
 }
@@ -1641,11 +1741,11 @@ void printMagData() {
 void printRollPitchYaw() {
   if (current_time - print_counter > 10000) {
     print_counter = micros();
-    Serial.print(F("roll:"));
+    Serial.print(F("roll: "));
     Serial.print(roll_IMU);
-    Serial.print(F(" pitch:"));
+    Serial.print(F(" pitch: "));
     Serial.print(pitch_IMU);
-    Serial.print(F(" yaw:"));
+    Serial.print(F(" yaw: "));
     Serial.println(yaw_IMU);
   }
 }
@@ -1653,11 +1753,11 @@ void printRollPitchYaw() {
 void printPIDoutput() {
   if (current_time - print_counter > 10000) {
     print_counter = micros();
-    Serial.print(F("roll_PID:"));
+    Serial.print(F("roll_PID: "));
     Serial.print(roll_PID);
-    Serial.print(F(" pitch_PID:"));
+    Serial.print(F(" pitch_PID: "));
     Serial.print(pitch_PID);
-    Serial.print(F(" yaw_PID:"));
+    Serial.print(F(" yaw_PID: "));
     Serial.println(yaw_PID);
   }
 }
@@ -1665,17 +1765,17 @@ void printPIDoutput() {
 void printMotorCommands() {
   if (current_time - print_counter > 10000) {
     print_counter = micros();
-    Serial.print(F("m1_command:"));
+    Serial.print(F("m1_command: "));
     Serial.print(m1_command_PWM);
-    Serial.print(F(" m2_command:"));
+    Serial.print(F(" m2_command: "));
     Serial.print(m2_command_PWM);
-    Serial.print(F(" m3_command:"));
+    Serial.print(F(" m3_command: "));
     Serial.print(m3_command_PWM);
-    Serial.print(F(" m4_command:"));
+    Serial.print(F(" m4_command: "));
     Serial.print(m4_command_PWM);
-    Serial.print(F(" m5_command:"));
+    Serial.print(F(" m5_command: "));
     Serial.print(m5_command_PWM);
-    Serial.print(F(" m6_command:"));
+    Serial.print(F(" m6_command: "));
     Serial.println(m6_command_PWM);
   }
 }
@@ -1683,19 +1783,19 @@ void printMotorCommands() {
 void printServoCommands() {
   if (current_time - print_counter > 10000) {
     print_counter = micros();
-    Serial.print(F("s1_command:"));
+    Serial.print(F("s1_command: "));
     Serial.print(s1_command_PWM);
-    Serial.print(F(" s2_command:"));
+    Serial.print(F(" s2_command: "));
     Serial.print(s2_command_PWM);
-    Serial.print(F(" s3_command:"));
+    Serial.print(F(" s3_command: "));
     Serial.print(s3_command_PWM);
-    Serial.print(F(" s4_command:"));
+    Serial.print(F(" s4_command: "));
     Serial.print(s4_command_PWM);
-    Serial.print(F(" s5_command:"));
+    Serial.print(F(" s5_command: "));
     Serial.print(s5_command_PWM);
-    Serial.print(F(" s6_command:"));
+    Serial.print(F(" s6_command: "));
     Serial.print(s6_command_PWM);
-    Serial.print(F(" s7_command:"));
+    Serial.print(F(" s7_command: "));
     Serial.println(s7_command_PWM);
   }
 }
@@ -1703,8 +1803,62 @@ void printServoCommands() {
 void printLoopRate() {
   if (current_time - print_counter > 10000) {
     print_counter = micros();
-    Serial.print(F("dt:"));
+    Serial.print(F("dt = "));
     Serial.println(dt*1000000.0);
+  }
+}
+
+void printI2Ccheck(){
+  byte error, address;
+  int nDevices;
+  if (current_time - print_counter > 10000) {
+  Serial.println("Scanning...");
+
+  nDevices = 0;
+  for(address = 1; address < 127; address++ )
+  {
+    // The i2c_scanner uses the return value of
+    // the Write.endTransmisstion to see if
+    // a device did acknowledge to the address.
+    Wire.beginTransmission(address);
+    error = Wire.endTransmission();
+
+    if (error == 0)
+    {
+      Serial.print("I2C device found at address 0x");
+      if (address<16)
+        Serial.print("0");
+      Serial.print(address,HEX);
+      Serial.println("  !");
+
+      nDevices++;
+    }
+    else if (error==4)
+    {
+      Serial.print("Unknown error at address 0x");
+      if (address<16)
+        Serial.print("0");
+      Serial.println(address,HEX);
+    }
+  }
+  if (nDevices == 0)
+    Serial.println("No I2C devices found\n");
+  else
+    Serial.println("done\n");
+  }
+}
+
+void printWx() {
+  if (current_time - print_counter > 10000) {
+    print_counter = micros();
+    Serial.print(F("Temp:"));
+    Serial.println(temp);
+    Serial.print(F("Humidity:"));
+    Serial.println(hum);
+    Serial.print(F("Pressure:"));
+    Serial.println(pres);
+    Serial.print(F("Pressure Read:"));
+    Serial.println(presRead);
   }
 }
 
