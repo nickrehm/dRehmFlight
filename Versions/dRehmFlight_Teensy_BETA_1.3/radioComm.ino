@@ -48,6 +48,11 @@ void radioSetup() {
   //DSM receiver
   #elif defined USE_DSM_RX
     Serial3.begin(115000);
+
+  //ELRS Receiver  
+  #elif defined USE_ELRS_RX
+    Serial3.begin(420000); // Default ELRS Baud
+    crsf.begin(Serial3);
   #else
     #error No RX type defined...
   #endif
