@@ -553,12 +553,30 @@ void getIMUdata() {
    * the readings. The filter parameters B_gyro and B_accel are set to be good for a 2kHz loop rate. Finally,
    * the constant errors found in calculate_IMU_error() on startup are subtracted from the accelerometer and gyro readings.
    */
-  int16_t AcX,AcY,AcZ,GyX,GyY,GyZ,MgX,MgY,MgZ;
+  int16_t AcX,AcY,AcZ,GyX,GyY,GyZ;
 
   #if defined USE_MPU6050_I2C
     mpu6050.getMotion6(&AcX, &AcY, &AcZ, &GyX, &GyY, &GyZ);
   #elif defined USE_MPU9250_SPI
+    int16_t MgX,MgY,MgZ;
+
     mpu9250.getMotion9(&AcX, &AcY, &AcZ, &GyX, &GyY, &GyZ, &MgX, &MgY, &MgZ);
+    
+    //Magnetometer
+    MagX = MgX/6.0; //uT
+    MagY = MgY/6.0;
+    MagZ = MgZ/6.0;
+    //Correct the outputs with the calculated error values
+    MagX = (MagX - MagErrorX)*MagScaleX;
+    MagY = (MagY - MagErrorY)*MagScaleY;
+    MagZ = (MagZ - MagErrorZ)*MagScaleZ;
+    //LP filter magnetometer data
+    MagX = (1.0 - B_mag)*MagX_prev + B_mag*MagX;
+    MagY = (1.0 - B_mag)*MagY_prev + B_mag*MagY;
+    MagZ = (1.0 - B_mag)*MagZ_prev + B_mag*MagZ;
+    MagX_prev = MagX;
+    MagY_prev = MagY;
+    MagZ_prev = MagZ;
   #endif
 
  //Accelerometer
@@ -593,21 +611,7 @@ void getIMUdata() {
   GyroY_prev = GyroY;
   GyroZ_prev = GyroZ;
 
-  //Magnetometer
-  MagX = MgX/6.0; //uT
-  MagY = MgY/6.0;
-  MagZ = MgZ/6.0;
-  //Correct the outputs with the calculated error values
-  MagX = (MagX - MagErrorX)*MagScaleX;
-  MagY = (MagY - MagErrorY)*MagScaleY;
-  MagZ = (MagZ - MagErrorZ)*MagScaleZ;
-  //LP filter magnetometer data
-  MagX = (1.0 - B_mag)*MagX_prev + B_mag*MagX;
-  MagY = (1.0 - B_mag)*MagY_prev + B_mag*MagY;
-  MagZ = (1.0 - B_mag)*MagZ_prev + B_mag*MagZ;
-  MagX_prev = MagX;
-  MagY_prev = MagY;
-  MagZ_prev = MagZ;
+
 }
 
 void calculate_IMU_error() {
@@ -617,7 +621,7 @@ void calculate_IMU_error() {
    * accelerometer values AccX, AccY, AccZ, GyroX, GyroY, GyroZ in getIMUdata(). This eliminates drift in the
    * measurement. 
    */
-  int16_t AcX,AcY,AcZ,GyX,GyY,GyZ,MgX,MgY,MgZ;
+  int16_t AcX,AcY,AcZ,GyX,GyY,GyZ;
   AccErrorX = 0.0;
   AccErrorY = 0.0;
   AccErrorZ = 0.0;
@@ -631,6 +635,7 @@ void calculate_IMU_error() {
     #if defined USE_MPU6050_I2C
       mpu6050.getMotion6(&AcX, &AcY, &AcZ, &GyX, &GyY, &GyZ);
     #elif defined USE_MPU9250_SPI
+      int16_t MgX,MgY,MgZ;
       mpu9250.getMotion9(&AcX, &AcY, &AcZ, &GyX, &GyY, &GyZ, &MgX, &MgY, &MgZ);
     #endif
     
