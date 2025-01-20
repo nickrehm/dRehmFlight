@@ -37,7 +37,7 @@ Due to supply chain issues, the Teensy 4.0 has been frequently out of stock thro
 
 **GY-521 MPU6050 IMU**: https://amzn.to/3edF1Vn
 
-These (and all Amazon links contained within the supporting documentation) are Amazon Affiliate links; by purchasing from these, I receive a small portion of the revenue at no cost to you. I appreciate any and all support!
+These (and all Amazon links contained within the supporting documentation) are Amazon Affiliate links; by purchasing from these, I receive a small portion of the revenue at no cost to you. I appreciate any and all support! [Buy all of the parts here.](https://www.amazon.com/shop/nicholasrehm/list/1NDPB7E0VMZOP?ref_=aip_sf_list_spv_ons_mixed_d)
 
 ### Software Requirments
 Code is uploaded to the board using the Arduino IDE; download the latest version here: https://www.arduino.cc/en/main/software
