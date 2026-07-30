@@ -1,5 +1,5 @@
 void printRadioData() {
-  if (current_time - print_counter > 10000) {
+  if (current_time - print_counter > PRINTLOOPINTERVAL) {
     print_counter = micros();
     Serial.print(F("LOW:1000.0"));
     Serial.print(F(" HIGH:2000.0"));
@@ -14,7 +14,7 @@ void printRadioData() {
 }
 
 void printDesiredState() {
-  if (current_time - print_counter > 10000) {
+  if (current_time - print_counter > PRINTLOOPINTERVAL) {
     print_counter = micros();
     Serial.print(F("LOW:-180.0"));
     Serial.print(F(" HIGH:180.0"));
@@ -30,7 +30,7 @@ void printDesiredState() {
 }
 
 void printGyroData() {
-  if (current_time - print_counter > 10000) {
+  if (current_time - print_counter > PRINTLOOPINTERVAL) {
     print_counter = micros();
     Serial.print(F("LOW:-300.0"));
     Serial.print(F(" HIGH:300.0"));
@@ -44,7 +44,7 @@ void printGyroData() {
 }
 
 void printAccelData() {
-  if (current_time - print_counter > 10000) {
+  if (current_time - print_counter > PRINTLOOPINTERVAL) {
     print_counter = micros();
     Serial.print(F("LOW:-2.0"));
     Serial.print(F(" HIGH:2.0"));
@@ -58,7 +58,7 @@ void printAccelData() {
 }
 
 void printMagData() {
-  if (current_time - print_counter > 10000) {
+  if (current_time - print_counter > PRINTLOOPINTERVAL) {
     print_counter = micros();
     Serial.print(F("LOW:-300.0"));
     Serial.print(F(" HIGH:300.0"));
@@ -86,7 +86,7 @@ void printRollPitchYaw() {
 }
 
 void printPIDoutput() {
-  if (current_time - print_counter > 10000) {
+  if (current_time - print_counter > PRINTLOOPINTERVAL) {
     print_counter = micros();
     Serial.print(F("LOW:-1.0"));
     Serial.print(F(" HIGH:1.0"));
@@ -115,7 +115,7 @@ void printMotorCommands() {
 }
 
 void printServoCommands() {
-  if (current_time - print_counter > 10000) {
+  if (current_time - print_counter > PRINTLOOPINTERVAL) {
     print_counter = micros();
     Serial.print(F("LOW:0.0"));
     Serial.print(F(" HIGH:1.0"));
@@ -130,10 +130,39 @@ void printServoCommands() {
 }
 
 void printLoopRate() {
-  if (current_time - print_counter > 10000) {
+  if (current_time - print_counter > PRINTLOOPINTERVAL) {
     print_counter = micros();
     Serial.print(F("dt:"));
     Serial.println(dt*1000000.0);
+  }
+}
+
+void printLoopRateAndProfiledTimes() {
+  // DESCRIPTION: Prints average loop rate and detailed execution times of profiled functions.
+  unsigned long currentTimeMicros = micros();
+  if (currentTimeMicros - loopRateLastPrintMicros > PRINTLOOPINTERVAL) {
+    unsigned long elapsedMicrosInterval = currentTimeMicros - loopRateLastPrintMicros;
+    if (loopRateCounter > 0 && elapsedMicrosInterval > 0) {
+      float avgFreq = (float)loopRateCounter * 1000000.0f / elapsedMicrosInterval;
+      Serial.print("AvgHz: "); Serial.print(avgFreq, 1);
+
+      Serial.print(" | TotInt_us: "); Serial.print(time_totalLoopInternal_us);
+      Serial.print(" | IMU: "); Serial.print(time_getIMUdata_us);
+      Serial.print(" | Madg: "); Serial.print(time_Madgwick_us);
+      Serial.print(" | DesSt: "); Serial.print(time_getDesState_us);
+      Serial.print(" | Fadr: "); Serial.print(time_faderLogic_us);
+      Serial.print(" | Angl: "); Serial.print(time_controlANGLE_us);
+      Serial.print(" | Mix: "); Serial.print(time_controlMixer_us);
+      Serial.print(" | Scale: "); Serial.print(time_scaleCommands_us);
+      Serial.print(" | CmdMot: "); Serial.print(time_commandMotors_us);
+      Serial.print(" | Servos: "); Serial.print(time_servoWrites_us);
+      Serial.print(" | GetCmd: "); Serial.print(time_getCommands_us);
+      Serial.print(" | FS: "); Serial.println(time_failSafe_us);
+    }
+
+    // Reset stats for the next printing interval
+    loopRateLastPrintMicros = currentTimeMicros;
+    loopRateCounter = 0;
   }
 }
 

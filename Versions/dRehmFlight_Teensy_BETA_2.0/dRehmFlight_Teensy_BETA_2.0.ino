@@ -83,16 +83,16 @@ Actuators Escs(ESC, numESCs, escPins);
 
 //========================================================================================================================//
 // declare IMU and pins
-IMU_Wrapper imu(MPU6050_I2C);
+IMU_Wrapper imu(LSM6DSOX_SPI);
 // values are MPU6050_I2C (Default), MPU9250_SPI, LSM6DSOX_SPI
 // Defaults to  GYRO_250DPS and ACCEL_2G.  You can change the sensitivity by altering these in the call above.
 // example:  IMU imu(LSM6DSOX_SPI, GYRO_1000DPS, ACCEL_8G);
 
 // Needed for MPU9250_SPI and LSM6DSOX_SPI.  Comment these out for MPU6050_I2C
-// #define IMU_CS   10    // CS2--green-yellow
-// #define IMU_SCK  13    // SCK2/SCL--white
-// #define IMU_MISO 12    // MISO2/DO--red
-// #define IMU_MOSI 11    // MOSI2/SDA--black
+#define IMU_CS   10    // CS--green-yellow
+#define IMU_SCK  13    // SCK/SCL--white
+#define IMU_MISO 12    // MISO/DO--red
+#define IMU_MOSI 11    // MOSI/SDA--black
 
 /*
 IMU Pin locations for IMU:
@@ -102,17 +102,18 @@ defaults for Teensy 4.0:
     SDA -> pin 18
     SCL -> pin 19
 
+  ** NOTE:  You can use pins 10-13 for SPI communication, but it will take away from the available servo/motor outputs **
   default pins for MPU9250 using SPI:
-    CS   -> pin 36
-    SCK  -> pin 37
-    MISO -> pin 34
-	  MOSI -> pin 35
+    CS   -> pin 36  OR  10
+    SCK  -> pin 37  OR  13
+    MISO -> pin 34  OR  12
+	  MOSI -> pin 35  OR  11
 
-  default pins for Adafruit LSM6DSOX:
-    CS   -> pin 36
-    SCK  -> pin 37
-    MISO -> pin 34
-	  MOSI -> pin 35
+  default pins for Adafruit LSM6DSOX using SPI:
+    CS   -> pin 36  OR  10
+    SCK  -> pin 37  OR  13
+    MISO -> pin 34  OR  12
+	  MOSI -> pin 35  OR  11
 */
 //========================================================================================================================//
 
@@ -124,23 +125,24 @@ defaults for Teensy 4.0:
 // Max number of channels is 8 for PPM and 16 for SBUS.
 #define NUM_CHANNELS  8
 
-// Holder array for radio PWM data
-unsigned int channel_pwm[NUM_CHANNELS];
-
 // Note: If using SBUS, connect to pin 21 (RX5), if using DSM, connect to pin 15 (RX3)
 // For PPM:
-// const int PPM_Pin = 23;
+const int PPM_Pin = 23;
 
 // Define the radio object
 // Set the type of RC radio you are using
 // Options options are:  PPM, DSM, or sBUS.
-RadioComm radio(sBUS, NUM_CHANNELS);
+//RadioComm radio(sBUS, NUM_CHANNELS);
+// The default channel order for dRhemFlight is TAER (Thr, Ail, Ele, Rud), if your radio/receiver outputs AETR (Ail, Ele, Thr, Rud), you can use that channel order like this:
+// TAER is the default, AETR is the only other option right now.
+RadioComm radio(PPM, NUM_CHANNELS, AETR);
+
+// Holder array for radio PWM data
+uint16_t channel_pwm[NUM_CHANNELS];
 
 //Radio failsafe values for every channel in the event that bad reciever data is detected. Recommended defaults:
-unsigned int channel_fs[NUM_CHANNELS] = {1000, 1500, 1500, 1500, 2000, 1000, 1000, 1000};
-//                                       thr,  ail,  ele,  rud,  arm,  aux1, aux2, aux3
-
-
+uint16_t channel_fs[NUM_CHANNELS] = {1000, 1500, 1500, 1500, 1000, 1000, 1000, 1000};
+//                                   thr,  ail,  ele,  rud,  arm,  aux1, aux2, aux3
 //========================================================================================================================//
 
 
@@ -156,12 +158,12 @@ void printPIDoutput();     //Prints computed stabilized PID variables from contr
 void printMotorCommands(); //Prints the values being written to the motors (expected: 120 to 250)
 void printServoCommands(); //Prints the values being written to the servos (expected: 0 to 180)
 void printLoopRate();      //Prints the time between loops in microseconds (expected: microseconds between loop iterations)
+void printLoopRateAndProfiledTimes();
 
 
-
-//DECLARE GLOBAL VARIABLES
-
+//DECLARE SYSTEM GLOBAL VARIABLES
 //General stuff
+#define PRINTLOOPINTERVAL 10000
 float dt;
 unsigned long current_time, prev_time;
 unsigned long print_counter, serial_counter;
@@ -171,10 +173,13 @@ bool blinkAlternate;
 //Flight status
 bool armedFly = false;
 
+// Loop rate profiling
+unsigned long loopRateLastPrintMicros = 0;
+unsigned long loopRateCounter = 0;
 
-
-
-
+// Profiling timers for individual functions
+unsigned long time_getIMUdata_us = 0, time_Madgwick_us = 0, time_getDesState_us = 0, time_faderLogic_us = 0, time_controlANGLE_us = 0, time_controlMixer_us = 0;
+unsigned long time_scaleCommands_us = 0, time_commandMotors_us = 0, time_servoWrites_us = 0, time_getCommands_us = 0, time_failSafe_us = 0, time_totalLoopInternal_us = 0;
 
 //Normalized desired state:
 // NOTE: Additional controls, such as collective pitch, tilt servos, etc. can be added here.
@@ -193,7 +198,7 @@ void setup() {
   delay(500);
   
   //Initialize all pins
-  pinMode(13, OUTPUT); //Pin 13 LED blinker on board, do not modify 
+  // pinMode(13, OUTPUT); //Pin 13 LED blinker on board, do not modify 
 
   //Initialize and arm servo channels
   Motors.begin();
@@ -201,25 +206,28 @@ void setup() {
   Escs.begin();
 
   //Set built in LED to turn on to signal startup
-  digitalWrite(13, HIGH);
+  // digitalWrite(13, HIGH);
 
   delay(500);
 
 
   //========================================================================================================================//
   //Initialize radio communication
-  radio.begin();   //sBUS or DSM
-  // radio.begin(PPM_Pin);   //PPM
+  //radio.begin();   //sBUS or DSM
+  radio.begin(PPM_Pin);   //PPM
 
   //Set radio channels to default (safe) values before entering main loop
   radio.setFailsafe(channel_fs);
+  // Set the radio object in failsafe mode until it comes online.  In my testing, the SBUS library doesn't return any data until it's successfully connected
+  radio.failSafe(true);
+
   //========================================================================================================================//
   
 
   //========================================================================================================================//
   //Initialize IMU communication
   // Needed for MPU9250_SPI and LSM6DSOX_SPI.  Comment this out for MPU6050_I2C
-  // imu.setSPIpins(IMU_CS, IMU_SCK, IMU_MISO, IMU_MOSI);
+  imu.setSPIpins(IMU_CS, IMU_SCK, IMU_MISO, IMU_MOSI);
 
   if (!imu.begin()) {  
     Serial.println("IMU init failed!");
@@ -262,7 +270,7 @@ void setup() {
 
 
   //Indicate entering main loop with 3 quick blinks
-  setupBlink(3,160,70); //numBlinks, upTime (ms), downTime (ms)
+  // setupBlink(3,160,70); //numBlinks, upTime (ms), downTime (ms)
 }
 
 
@@ -276,52 +284,85 @@ void loop() {
   prev_time = current_time;      
   current_time = micros();      
   dt = (current_time - prev_time)/1000000.0;
+  loopRateCounter++;
+  unsigned long section_start_us;
 
-  loopBlink(); //Indicate we are in main loop with short blink every 1.5 seconds
+  // loopBlink(); //Indicate we are in main loop with short blink every 1.5 seconds
+
+  //Get vehicle state
+  section_start_us = micros();
+  imu.getIMUdata(); //Pulls raw gyro, accelerometer, and magnetometer data from IMU and LP filters to remove noise
+  time_getIMUdata_us = micros() - section_start_us;
+
+  section_start_us = micros();
+  imu.Madgwick(dt); //Updates roll_IMU, pitch_IMU, and yaw_IMU angle estimates (degrees)
+  time_Madgwick_us = micros() - section_start_us;
+
+  section_start_us = micros();
+  //Get vehicle commands for next loop iteration
+  radio.getCommands(channel_pwm); //Pulls current available radio commands
+  time_getCommands_us = micros() - section_start_us;
+  
+  section_start_us = micros();
+  // radio.failSafe(); //Prevent failures in event of bad receiver connection, defaults to failsafe values assigned in setup
+  time_failSafe_us = micros() - section_start_us;
+
+  //Compute desired state
+  section_start_us = micros();
+  getDesState();  //Convert raw commands to normalized values based on saturated control limits
+  time_getDesState_us = micros() - section_start_us;
+
+
+  section_start_us = micros();
+  //PID Controller - SELECT ONE:
+  imu.controlANGLE(roll_des, pitch_des, yaw_des, dt, channel_pwm[0]); //Stabilize on angle setpoint
+  //imu.controlANGLE2(roll_des, pitch_des, yaw_des, dt, channel_pwm[0]); //Stabilize on angle setpoint using cascaded method. Rate controller must be tuned well first!
+  //imu.controlRATE(roll_des, pitch_des, yaw_des, dt, channel_pwm[0]); //Stabilize on rate setpoint
+  time_controlANGLE_us = micros() - section_start_us;
+
+  //Actuator mixing and scaling to PWM values
+  section_start_us = micros();
+  controlMixer();
+  time_controlMixer_us = micros() - section_start_us;
+
+
+  // Get arming status
+  armedStatus(); //Check if the throttle cut is off and throttle is low.
+  //Throttle cut check
+  throttleCut(); //Directly sets motor commands to low based on state of ch5
+
+
+  // Command actuators
+  // Write outputs to all servos, ESCs, and motors
+  section_start_us = micros();
+  Motors.commandAll(m_command_scaled);
+  time_commandMotors_us = micros() - section_start_us;
+
+  section_start_us = micros();
+  Escs.commandAll(e_command_scaled);
+  Servos.commandAll(s_command_scaled);
+  time_servoWrites_us = micros() - section_start_us;
+
+  // ----------------------------------------------------------------
+  // Debugging & Loop Rate Control
+  // ----------------------------------------------------------------
+  time_totalLoopInternal_us = micros() - current_time;
+
+
 
   //Print data at 100hz (uncomment one at a time for troubleshooting) - SELECT ONE:
-  //printRadioData();     //Prints radio pwm values (expected: 1000 to 2000)
+  printRadioData();     //Prints radio pwm values (expected: 1000 to 2000)
   //printDesiredState();  //Prints desired vehicle state commanded in either degrees or deg/sec (expected: +/- maxAXIS for roll, pitch, yaw; 0 to 1 for throttle)
   //printGyroData();      //Prints filtered gyro data direct from IMU (expected: ~ -250 to 250, 0 at rest)
   //printAccelData();     //Prints filtered accelerometer data direct from IMU (expected: ~ -2 to 2; x,y 0 when level, z 1 when level)
   //printMagData();       //Prints filtered magnetometer data direct from IMU (expected: ~ -300 to 300)
   //printRollPitchYaw();  //Prints roll, pitch, and yaw angles in degrees from Madgwick filter (expected: degrees, 0 when level)
   //printPIDoutput();     //Prints computed stabilized PID variables from controller and desired setpoint (expected: ~ -1 to 1)
-  printMotorCommands(); //Prints the values being written to the motors (expected: 120 to 250)
+  //printMotorCommands(); //Prints the values being written to the motors (expected: 120 to 250)
   //printServoCommands(); //Prints the values being written to the servos (expected: 0 to 180)
-  //printLoopRate();      //Prints the time between loops in microseconds (expected: microseconds between loop iterations)
+  printLoopRate();      //Prints the time between loops in microseconds (expected: microseconds between loop iterations)
+  //printLoopRateAndProfiledTimes();
 
-  // Get arming status
-  armedStatus(); //Check if the throttle cut is off and throttle is low.
-
-  //Get vehicle state
-  imu.getIMUdata(); //Pulls raw gyro, accelerometer, and magnetometer data from IMU and LP filters to remove noise
-  imu.Madgwick(dt); //Updates roll_IMU, pitch_IMU, and yaw_IMU angle estimates (degrees)
-
-  //Compute desired state
-  getDesState(); //Convert raw commands to normalized values based on saturated control limits
-  
-  //PID Controller - SELECT ONE:
-  imu.controlANGLE(roll_des, pitch_des, yaw_des, dt, channel_pwm[0]); //Stabilize on angle setpoint
-  //imu.controlANGLE2(roll_des, pitch_des, yaw_des, dt, channel_pwm[0]); //Stabilize on angle setpoint using cascaded method. Rate controller must be tuned well first!
-  //imu.controlRATE(roll_des, pitch_des, yaw_des, dt, channel_pwm[0]); //Stabilize on rate setpoint
-
-  //Actuator mixing and scaling to PWM values
-  controlMixer(); //Mixes PID outputs to scaled actuator commands -- custom mixing assignments done here
-
-  //Throttle cut check
-  throttleCut(); //Directly sets motor commands to low based on state of ch5
-
-  // Command actuators
-  // Write outputs to all servos, ESCs, and motors
-  Servos.commandAll(s_command_scaled);
-  Escs.commandAll(e_command_scaled);
-  Motors.commandAll(m_command_scaled);
-
-
-  //Get vehicle commands for next loop iteration
-  radio.getCommands(channel_pwm); //Pulls current available radio commands
-  radio.failSafe(); //Prevent failures in event of bad receiver connection, defaults to failsafe values assigned in setup
 
   //Regulate loop rate
   loopRate(2000); //Do not exceed 2000Hz, all filter parameters tuned to 2000Hz by default
@@ -487,7 +528,7 @@ void getDesState() {
 
 void armedStatus() {
   //DESCRIPTION: Check if the throttle cut is off and the throttle input is low to prepare for flight.
-  if ((channel_pwm[4] < 1500) && (channel_pwm[0] < 1050)) {
+  if ((channel_pwm[4] > 1500) && (channel_pwm[0] < 1050)) {
     if (armedFly == false) {
       Serial.println(F("ARMED!"));
     }
@@ -525,10 +566,10 @@ void calibrateESCs() {
       current_time = micros();      
       dt = (current_time - prev_time)/1000000.0;
     
-      digitalWrite(13, HIGH); //LED on to indicate we are not in main loop
+      // digitalWrite(13, HIGH); //LED on to indicate we are not in main loop
 
       radio.getCommands(channel_pwm); //Pulls current available radio commands
-      radio.failSafe(); //Prevent failures in event of bad receiver connection, defaults to failsafe values assigned in setup
+      // radio.failSafe(); //Prevent failures in event of bad receiver connection, defaults to failsafe values assigned in setup
       // getDesState(); //Convert raw commands to normalized values based on saturated control limits -- this was in here 2x.  Not sure that's needed
       imu.getIMUdata(); //Pulls raw gyro, accelerometer, and magnetometer data from IMU and LP filters to remove noise
       imu.Madgwick(dt); //Updates roll_IMU, pitch_IMU, and yaw_IMU (degrees)
@@ -561,14 +602,14 @@ void throttleCut() {
   //DESCRIPTION: Directly set actuator outputs to minimum value if triggered
   /*
       Monitors the state of radio command channel_5_pwm and directly sets the mx_command_PWM values to minimum (120 is
-      minimum for oneshot125 protocol, 0 is minimum for standard PWM servo library used) if channel 5 is high. This is the last function
+      minimum for oneshot125 protocol, 0 is minimum for standard PWM servo library used) if channel 5 is low. This is the last function
       called before commandAll() is called so that the last thing checked is if the user is giving permission to command
       the motors to anything other than minimum value. Safety first.
 
       channel_5_pwm is LOW then throttle cut is OFF and throttle value can change. (ThrottleCut is DEACTIVATED)
       channel_5_pwm is HIGH then throttle cut is ON and throttle value = 120 only. (ThrottleCut is ACTIVATED), (drone is DISARMED)
   */
-  if ((channel_pwm[4] > 1500) || (armedFly == false)) {
+  if ((channel_pwm[4] < 1500) || (armedFly == false)) {
     if (armedFly == true) Serial.println(F("DISARMED"));
 
     armedFly = false;
