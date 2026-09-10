@@ -182,8 +182,8 @@ const char index_html[] PROGMEM = R"rawliteral(
       <input type="range" id="slider-i" min="0" max="1" step="0.001" oninput="updateValues()">
     </div>
     <div class="slider-group">
-      <div class="slider-label">D-Gain: <span id="val-d">0.0002</span></div>
-      <input type="range" id="slider-d" min="0" max="0.01" step="0.00001" oninput="updateValues()">
+      <div class="slider-label">D-Gain: <span id="val-d">0.200</span></div>
+      <input type="range" id="slider-d" min="0" max="0.05" step="0.0001" oninput="updateValues()">
     </div>
   </div>
 
@@ -203,6 +203,22 @@ const char index_html[] PROGMEM = R"rawliteral(
   let currentAxis = 'roll';
   let currentMode = 'rate';
   let sendTimer = null;
+
+  // Roll/Pitch RATE-mode D operates on a discrete derivative-over-dt term,
+  // which is numerically ~1000x larger in raw magnitude than the angle-mode
+  // D term (a direct gyro-rate substitution) for a comparable physical
+  // response -- that's why the stock defaults are 0.0002 (rate) vs 0.05
+  // (angle). Yaw's D uses that same discrete derivative-over-dt formula in
+  // BOTH modes (its rate and angle defaults are identically tiny), so it
+  // gets the same treatment for both mode tabs. This scales just the
+  // slider/label for those small-range combos so they stay legible on
+  // screen; the value actually stored and sent to the ESP32 (and to
+  // /setPID) is always the true raw gain.
+  function dScaleFactor(axis, mode) {
+    if (mode === 'rate' && (axis === 'roll' || axis === 'pitch')) return 1000;
+    if (axis === 'yaw') return 1000;
+    return 1;
+  }
 
   window.onload = function () {
     fetchPIDs();
@@ -242,14 +258,27 @@ const char index_html[] PROGMEM = R"rawliteral(
   // Push the current axis/mode's gains into the sliders + labels
   function renderGains() {
     let g = (gains[currentAxis] && gains[currentAxis][currentMode]) || { p: 0, i: 0, d: 0 };
+    let dScale = dScaleFactor(currentAxis, currentMode);
+    let dDisplay = g.d * dScale;
+
+    let dSlider = document.getElementById('slider-d');
+    if (dScale === 1000) {
+      dSlider.min = 0;
+      dSlider.max = 5;
+      dSlider.step = 0.01;
+    } else {
+      dSlider.min = 0;
+      dSlider.max = 0.05;
+      dSlider.step = 0.0001;
+    }
 
     document.getElementById('slider-p').value = g.p;
     document.getElementById('slider-i').value = g.i;
-    document.getElementById('slider-d').value = g.d;
+    dSlider.value = dDisplay;
 
     document.getElementById('val-p').innerText = Number(g.p).toFixed(3);
     document.getElementById('val-i').innerText = Number(g.i).toFixed(3);
-    document.getElementById('val-d').innerText = Number(g.d).toFixed(5);
+    document.getElementById('val-d').innerText = dDisplay.toFixed(dScale === 1000 ? 3 : 5);
   }
 
   // Called on every slider drag. Updates the label immediately and
@@ -258,11 +287,13 @@ const char index_html[] PROGMEM = R"rawliteral(
   function updateValues() {
     let p = parseFloat(document.getElementById('slider-p').value);
     let i = parseFloat(document.getElementById('slider-i').value);
-    let d = parseFloat(document.getElementById('slider-d').value);
+    let dDisplay = parseFloat(document.getElementById('slider-d').value);
+    let dScale = dScaleFactor(currentAxis, currentMode);
+    let d = dDisplay / dScale; // convert back to the raw gain the firmware expects
 
     document.getElementById('val-p').innerText = p.toFixed(3);
     document.getElementById('val-i').innerText = i.toFixed(3);
-    document.getElementById('val-d').innerText = d.toFixed(5);
+    document.getElementById('val-d').innerText = dDisplay.toFixed(dScale === 1000 ? 3 : 5);
 
     if (!gains[currentAxis]) gains[currentAxis] = {};
     gains[currentAxis][currentMode] = { p, i, d };

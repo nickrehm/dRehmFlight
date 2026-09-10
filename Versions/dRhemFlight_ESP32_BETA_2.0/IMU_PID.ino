@@ -47,6 +47,14 @@
   sensors_event_t accel;
   sensors_event_t gyro;
   sensors_event_t temp;  //unused, but could be interesting
+
+  // NOTE: no separate SPIClass object here. On the ESP32-S3 the board's
+  // built-in global `SPI` object (declared by the core itself) is ALREADY
+  // bus FSPI/SPI2 -- the same physical peripheral these pins are wired to.
+  // A second SPIClass instance on the same bus caused a crash
+  // (assert failed: xQueueSemaphoreTake) the first time the flight loop
+  // read the IMU, so we reuse the existing `SPI` object instead of
+  // constructing a duplicate wrapper around the same hardware.
 #else
   #error No MPU defined... 
 #endif
@@ -117,6 +125,14 @@ const float B_accel = 0.14;     //Accelerometer LP filter paramter, (MPU6050 def
 const float B_gyro = 0.1;       //Gyro LP filter paramter, (MPU6050 default: 0.1. MPU9250 default: 0.17)
 const float B_mag = 1.0;        //Magnetometer LP filter parameter
 
+// Low-pass filter applied specifically to the D-term (separate from B_gyro,
+// which filters the raw gyro signal). Differentiating amplifies high-frequency
+// noise far more than P or I do -- on this frame that showed up as hot motors
+// and an audible motor noise change while hovering, well before any visible
+// wobble. Lower = more filtering (calmer, more phase lag); higher = less
+// filtering (snappier D, more noise-sensitive). Tune to taste.
+const float B_dterm = 0.2;
+
 //Magnetometer calibration parameters - if using MPU9250, uncomment calibrateMagnetometer() in void setup() to get these values, else just ignore these
 const float MagErrorX = 0.0;
 const float MagErrorY = 0.0; 
@@ -130,12 +146,12 @@ const float B_loop_pitch = 0.9;     //Pitch damping term for controlANGLE2(), lo
 
 
 //IMU calibration parameters - calibrate IMU using calculate_IMU_error() in the void setup() to get these values, then comment out calculate_IMU_error()
-float AccErrorX = -0.03;
-float AccErrorY = 0.00;
-float AccErrorZ = 0.02;
-float GyroErrorX = 0.94;
-float GyroErrorY = 0.39;
-float GyroErrorZ = 0.79;
+float AccErrorX = -0.00;
+float AccErrorY = 0.02;
+float AccErrorZ = 0.03;
+float GyroErrorX = -0.05;
+float GyroErrorY = -0.10;
+float GyroErrorZ = -0.39;
 
 
 //IMU:
@@ -154,6 +170,9 @@ float q3 = 0.0f;
 float error_roll, error_roll_prev, roll_des_prev, integral_roll, integral_roll_il, integral_roll_ol, integral_roll_prev, integral_roll_prev_il, integral_roll_prev_ol, derivative_roll = 0;
 float error_pitch, error_pitch_prev, pitch_des_prev, integral_pitch, integral_pitch_il, integral_pitch_ol, integral_pitch_prev, integral_pitch_prev_il, integral_pitch_prev_ol, derivative_pitch = 0;
 float error_yaw, error_yaw_prev, integral_yaw, integral_yaw_prev, derivative_yaw = 0;
+
+//D-term low-pass filter memory (previous filtered value per axis; shared between controlANGLE()/controlRATE())
+float derivative_roll_filt, derivative_pitch_filt, derivative_yaw_filt = 0;
 
 
 
@@ -208,7 +227,8 @@ void IMUinit() {
     mpu9250.setSrd(0); //sets gyro and accel read to 1khz, magnetometer read to 100hz
   
   #elif defined USE_LSM6DSOX_SPI
-    if (!lsm6dsox.begin_SPI(LSM_CS, LSM_SCK, LSM_MISO, LSM_MOSI)) {
+    SPI.begin(LSM_SCK, LSM_MISO, LSM_MOSI, LSM_CS); // start hardware SPI2 bus
+    if (!lsm6dsox.begin_SPI(LSM_CS, &SPI)) {
       Serial.println("Failed to find LSM6DSOX chip");
       Serial.println("LSM6DSOX initialization unsuccessful");
       Serial.println("Check LSM6DSOX wiring or try cycling power");
@@ -219,9 +239,9 @@ void IMUinit() {
     }
     lsm6dsox.setGyroRange(GYRO_SCALE);
     lsm6dsox.setAccelRange(ACCEL_SCALE);
-    // Set the data rate of the board higher than stock 104Hz
-    // lsm6dsox.setAccelDataRate(LSM6DS_RATE_6_66K_HZ);
-    // lsm6dsox.setGyroDataRate(LSM6DS_RATE_6_66K_HZ);
+    // Set the data rate of the board higher than stock 104Hz - 
+    lsm6dsox.setAccelDataRate(LSM6DS_RATE_3_33K_HZ);
+    lsm6dsox.setGyroDataRate(LSM6DS_RATE_3_33K_HZ);
   #endif
 }
 
@@ -716,6 +736,7 @@ void controlANGLE() {
   }
   integral_roll = constrain(integral_roll, -i_limit, i_limit); //Saturate integrator to prevent unsafe buildup
   derivative_roll = GyroX;
+  derivative_roll = filterDterm(derivative_roll, derivative_roll_filt); //Low-pass the D-term to tame differentiated sensor noise
   roll_PID = 0.01*(Kp_roll*error_roll + Ki_roll*integral_roll - Kd_roll*derivative_roll); //Scaled by .01 to bring within -1 to 1 range
 
   //Pitch
@@ -726,6 +747,7 @@ void controlANGLE() {
   }
   integral_pitch = constrain(integral_pitch, -i_limit, i_limit); //Saturate integrator to prevent unsafe buildup
   derivative_pitch = GyroY;
+  derivative_pitch = filterDterm(derivative_pitch, derivative_pitch_filt); //Low-pass the D-term to tame differentiated sensor noise
   pitch_PID = .01*(Kp_pitch*error_pitch + Ki_pitch*integral_pitch - Kd_pitch*derivative_pitch); //Scaled by .01 to bring within -1 to 1 range
 
   //Yaw, stablize on rate from GyroZ
@@ -736,6 +758,7 @@ void controlANGLE() {
   }
   integral_yaw = constrain(integral_yaw, -i_limit, i_limit); //Saturate integrator to prevent unsafe buildup
   derivative_yaw = (error_yaw - error_yaw_prev)/dt; 
+  derivative_yaw = filterDterm(derivative_yaw, derivative_yaw_filt); //Low-pass the D-term to tame differentiated sensor noise
   yaw_PID = .01*(Kp_yaw*error_yaw + Ki_yaw*integral_yaw + Kd_yaw*derivative_yaw); //Scaled by .01 to bring within -1 to 1 range
 
   //Update variables
@@ -877,6 +900,7 @@ void controlRATE() {
   if (channel_pwm[0] < 1060) { integral_roll = 0; }
   integral_roll = constrain(integral_roll, -i_limit, i_limit); 
   derivative_roll = (error_roll - error_roll_prev)/dt; 
+  derivative_roll = filterDterm(derivative_roll, derivative_roll_filt); //Low-pass the D-term to tame differentiated sensor noise
   roll_PID = .01*(Kp_roll*error_roll + Ki_roll*integral_roll + Kd_roll*derivative_roll);
 
   //Pitch
@@ -885,6 +909,7 @@ void controlRATE() {
   if (channel_pwm[0] < 1060) { integral_pitch = 0; }
   integral_pitch = constrain(integral_pitch, -i_limit, i_limit); 
   derivative_pitch = (error_pitch - error_pitch_prev)/dt; 
+  derivative_pitch = filterDterm(derivative_pitch, derivative_pitch_filt); //Low-pass the D-term to tame differentiated sensor noise
   pitch_PID = .01*(Kp_pitch*error_pitch + Ki_pitch*integral_pitch + Kd_pitch*derivative_pitch);
   
   //Yaw, stablize on rate from GyroZ
@@ -893,6 +918,7 @@ void controlRATE() {
   if (channel_pwm[0] < 1060) { integral_yaw = 0; }
   integral_yaw = constrain(integral_yaw, -i_limit, i_limit); 
   derivative_yaw = (error_yaw - error_yaw_prev)/dt; 
+  derivative_yaw = filterDterm(derivative_yaw, derivative_yaw_filt); //Low-pass the D-term to tame differentiated sensor noise
   yaw_PID = .01*(Kp_yaw*error_yaw + Ki_yaw*integral_yaw + Kd_yaw*derivative_yaw);
   
   // Save states
@@ -909,6 +935,19 @@ void controlRATE() {
 //=========================================================================================//
 
 //HELPER FUNCTIONS
+
+float filterDterm(float raw, float &prevFiltered) {
+  //DESCRIPTION: First-order low-pass filter applied to an already-computed D-term value
+  /*
+   * The D-term differentiates a (possibly noisy) signal, which amplifies high-frequency
+   * noise far more than P or I do. This smooths the derivative itself, separately from
+   * the raw sensor low-pass (B_gyro), so D can be brought up for responsiveness without
+   * that noise turning into constant tiny motor corrections (heat, audible motor noise).
+   */
+  float filtered = (1.0 - B_dterm)*prevFiltered + B_dterm*raw;
+  prevFiltered = filtered;
+  return filtered;
+}
 
 float invSqrt(float x) {
   //Fast inverse sqrt for madgwick filter

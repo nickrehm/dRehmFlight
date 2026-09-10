@@ -40,8 +40,8 @@ ADD MORE CREDITS TO UPDATE
 //#define USE_PPM_RX    // deprecated
 //#define USE_DSM_RX    // deprecated
 // static const uint8_t num_DSM_channels = 6; //If using DSM RX, change this to match the number of transmitter channels you have
-//#define USE_SBUS_RX
-#define USE_CRSF_RX
+#define USE_SBUS_RX
+//#define USE_CRSF_RX
 
 
 // Uncomment only one IMU
@@ -49,6 +49,13 @@ ADD MORE CREDITS TO UPDATE
 //#define USE_MPU9250_SPI
 #define USE_LSM6DSOX_SPI
 // any other IMUs to add?
+
+// Uncomment only one motor protocol -- PWM, ONESHOT125, DSHOT
+// #define USE_MOTOR_PROTOCOL_PWM
+// #define USE_MOTOR_PROTOCOL_ONESHOT
+#define USE_MOTOR_PROTOCOL_DSHOT
+
+
 
 // Enable to startup a web server at 192.168.4.1 for dynamic PID tuning
 #define USE_WEBSERVER 1
@@ -73,9 +80,26 @@ const char* password = "tuningpassword";
 #include <atomic>
 #include "driver/mcpwm_prelude.h"
 
-// OneShot125 Constants
-#define ONESHOT125_MIN_US 125
-#define ONESHOT125_MAX_US 250
+#if defined USE_MOTOR_PROTOCOL_ONESHOT
+  // OneShot125 Constants
+  #define ONESHOT125_MIN_US 125
+  #define ONESHOT125_MAX_US 250
+#endif
+
+#if defined USE_MOTOR_PROTOCOL_DSHOT
+  #include "src/DShotRMT/DShotRMT.h"
+
+  // DShot Constants
+  // Supported: DSHOT150, DSHOT300, DSHOT600, (DSHOT1200)
+  #define DSHOT_MODE DSHOT300
+  // BiDirectional DShot Support (default: false)
+  #define DSHOT_TELEM false
+  // Set the throttle minimum for DSHOT (airmode)
+  #define DSHOT_MINTHROTTLE 150
+#endif
+
+
+
 // The onboard LED pin for the ESP32 is pin 2
 #define LEDPIN 2
 
@@ -90,7 +114,7 @@ const char* password = "tuningpassword";
   bool sbusLostFrame;
 #endif
 
-#if defined USE_DSM_RX
+#if defined USE_DSM_RX    // deprecated
   // #include "src/DSMRX/DSMRX.h"  
   // DSM1024 DSM;
 #endif
@@ -109,7 +133,8 @@ const char* password = "tuningpassword";
 
 
 
-// Servo configuration structure.  Used for defining servo parameters.
+
+// Servo configuration structure.  Used for defining servo and motor parameters.
 struct ServoConfig {
   uint8_t pin;
   int refresh;
@@ -120,6 +145,8 @@ struct ServoConfig {
   int minDuty;  // auto set via servoConfig
   int maxDuty;  // auto set via servoConfig
 };
+
+
 
 //========================================================================================================================//
 
@@ -143,21 +170,26 @@ const unsigned long channel_fs[NUM_CHANNELS] = {1000, 1500, 1500, 1500, 2000, 20
 
 
 //Controller parameters (take note of defaults before modifying!): 
-const float i_limit = 25.0;     //Integrator saturation level, mostly for safety (default 25.0)
-const float maxRoll = 30.0;     //Max roll angle in degrees for angle mode (maximum ~70 degrees), deg/sec for rate mode 
-const float maxPitch = 30.0;    //Max pitch angle in degrees for angle mode (maximum ~70 degrees), deg/sec for rate mode
-const float maxYaw = 160.0;     //Max yaw rate in deg/sec
+const float i_limit  = 25.0;     //Integrator saturation level, mostly for safety (default 25.0)
+// Angle mode and rate mode use roll/pitch limits with different physical units
+// (degrees of tilt vs degrees/sec of rotation) -- like the RATE vs ANGLE PID
+// gains below, they get separate constants instead of one shared value.
+const float maxRoll_angle  = 30.0;   //Max roll angle in degrees for angle mode (maximum ~70 degrees)
+const float maxPitch_angle = 30.0;   //Max pitch angle in degrees for angle mode (maximum ~70 degrees)
+const float maxRoll_rate   = 160.0;  //Max roll rate in deg/sec for rate mode
+const float maxPitch_rate  = 160.0;  //Max pitch rate in deg/sec for rate mode
+const float maxYaw         = 160.0;  //Max yaw rate in deg/sec (both modes)
 
 
 // Hard-coded default PID parameters.  These will be used as the default when "Reset to default" is used on the web interface or uncommented function.
 // RATE MODE defaults
-const float DEFAULT_KP_ROLL_RATE = 0.15;
+const float DEFAULT_KP_ROLL_RATE = 0.30;
 const float DEFAULT_KI_ROLL_RATE = 0.20;
-const float DEFAULT_KD_ROLL_RATE = 0.0002;
+const float DEFAULT_KD_ROLL_RATE = 0.00015;
 
-const float DEFAULT_KP_PITCH_RATE = 0.15;
+const float DEFAULT_KP_PITCH_RATE = 0.30;
 const float DEFAULT_KI_PITCH_RATE = 0.20;
-const float DEFAULT_KD_PITCH_RATE = 0.0002;
+const float DEFAULT_KD_PITCH_RATE = 0.00015;
 
 const float DEFAULT_KP_YAW_RATE = 0.30;
 const float DEFAULT_KI_YAW_RATE = 0.05;
@@ -185,17 +217,38 @@ const float DEFAULT_KD_YAW_ANGLE = 0.00015;
 
 //NOTE: Pin 2 is reserved for onboard LED, pins 10-13 are reserved for the IMU SPI interface under default setup
 //Radio:
-//Note: If using SBUS, connect to pin 16.  Channel order is currently hardcoded for TAER, arm switch, and mode switch.
-// const int ch1Pin = 99; //throttle
-// const int ch2Pin = 99; //ail
-// const int ch3Pin = 99; //ele
-// const int ch4Pin = 99; //rudd
-// const int ch5Pin = 99; //gear (throttle cut)
-// const int ch6Pin = 99; //aux1 (free aux channel)
-// const int PPM_Pin = 99;
+//If using SBUS, connect to pin 18.  Channel order is currently hardcoded for TAER, arm switch, and mode switch.
+//If using Crossfire (CRSF), connect RX to pin 18 and TX to pin 17.  Channel order is currently hardcoded for TAER, arm switch, and mode switch.
 
-// OneShot125 ESC pin outputs:
-const int motorPins[NUM_MOTORS] = {38, 39, 40, 41};
+
+#if defined USE_MOTOR_PROTOCOL_DSHOT
+  DShotRMT* dshot_motors[NUM_MOTORS];
+#endif
+
+// Set the parameters for each motor here (ignore that it says ServoConfig):
+ServoConfig motors[NUM_MOTORS] = {
+/*
+  Values for configuring servos:
+  1) Pin - what pin on the ESP32 to use.  Most pins are available.  Check your specific board
+
+  ** The remaining values only matter if you're using PWM ESCs.  OneShot and DShot ESCs ignore these **
+
+  2) Servo refresh rate.  The default for nearly all PWM servos and ESCs is 50Hz.  Digital servos and some ESCs can go faster.  If you hear extra noise or heat from the servo, back this down.
+      options are commonly 50 Hz (default), 150 Hz, and 333 Hz.  Other values may work as well.  YMMV.
+  3) Minimum servo travel in micro-seconds (us). (default 900 us)
+  4) Maximum servo travel in micro-seconds (us). (default 2100 us)
+      The default signals output for servos are between 1000 and 2000.  You can adjust these for additional travel, but the code is currently constrained to 1000-2000.  That may change in future releases. 
+  5) Servo Trim.  This floating point value is added to the inputs to adjust servo travel.  increment and decrement as needed to get your servo trimmed properly.  (Range: +/- 0.5, but you will need small increments)
+  6) Initialization Angle.  This value (0-180) is applied to the servo at startup.  For control surfaces, you'll probably want this in the center (90). For ESCs, you'll want this at the minimum (0) for proper startup.
+*/
+// 1)  2)  3)   4)    5)   6)
+  {38,  50, 900, 2100, 0.0, 0},
+  {39,  50, 900, 2100, 0.0, 0},
+  {40,  50, 900, 2100, 0.0, 0},
+  {41,  50, 900, 2100, 0.0, 0}
+};
+
+
 
 // Set the parameters for each servo here:
 ServoConfig servos[NUM_SERVOS] = {
@@ -211,13 +264,13 @@ ServoConfig servos[NUM_SERVOS] = {
   6) Initialization Angle.  This value (0-180) is applied to the servo at startup.  For control surfaces, you'll probably want this in the center (90). For ESCs, you'll want this at the minimum (0) for proper startup.
 */
 // 1)  2)  3)   4)    5)   6)
-  {4,  50, 900, 2100, 0.0, 0},
-  {5,  50, 900, 2100, 0.0, 0},
-  {6,  50, 900, 2100, 0.0, 0},
-  {7,  50, 900, 2100, 0.0, 0},
-  {14, 50, 900, 2100, 0.0, 0},
-  {15, 50, 900, 2100, 0.0, 0},
-  {21, 50, 900, 2100, 0.0, 0}
+  {4,  50, 900, 2100, 0.0, 90},
+  {5,  50, 900, 2100, 0.0, 90},
+  {6,  50, 900, 2100, 0.0, 90},
+  {7,  50, 900, 2100, 0.0, 90},
+  {14, 50, 900, 2100, 0.0, 90},
+  {15, 50, 900, 2100, 0.0, 90},
+  {21, 50, 900, 2100, 0.0, 90}
 };
 
 
@@ -401,9 +454,7 @@ void flightTask(void *pvParameters) {
 
     //Command actuators
     commandMotors(); //Sends command pulses to each motor pin using OneShot125 protocol
-    for (int i=0; i<NUM_SERVOS; i++) {
-      writeServo(servos[i], s_command_PWM[i]);
-    }
+    commandServos(); //Sends command pulses to each servo pin using PWM protocol
 
     //Get vehicle commands for next loop iteration
     getCommands(); //Pulls current available radio commands
@@ -444,7 +495,7 @@ void setup() {
     delay(5);
 
     //Initialize all motors
-    initOneShot125();
+    initMotors();
     // Initialize all servos
     initServos();
     delay(5);
@@ -573,8 +624,15 @@ void getDesState() {
   
   //Constrain within normalized bounds
   thro_des = constrain(thro_des, 0.0, 1.0); //Between 0 and 1
-  roll_des = constrain(roll_des, -1.0, 1.0)*maxRoll; //Between -maxRoll and +maxRoll
-  pitch_des = constrain(pitch_des, -1.0, 1.0)*maxPitch; //Between -maxPitch and +maxPitch
+  // Use the rate-mode or angle-mode limits depending on which mode is
+  // currently active (same channel_pwm[5] switch flightTask() uses to
+  // choose controlRATE() vs controlANGLE()).
+  bool rateModeActive = (channel_pwm[5] > 1800);
+  float maxRollNow  = rateModeActive ? maxRoll_rate  : maxRoll_angle;
+  float maxPitchNow = rateModeActive ? maxPitch_rate : maxPitch_angle;
+
+  roll_des = constrain(roll_des, -1.0, 1.0)*maxRollNow; //Between -maxRollNow and +maxRollNow
+  pitch_des = constrain(pitch_des, -1.0, 1.0)*maxPitchNow; //Between -maxPitchNow and +maxPitchNow
   yaw_des = constrain(yaw_des, -1.0, 1.0)*maxYaw; //Between -maxYaw and +maxYaw
   roll_passthru = constrain(roll_passthru, -0.5, 0.5);
   pitch_passthru = constrain(pitch_passthru, -0.5, 0.5);
@@ -592,10 +650,31 @@ void scaleCommands() {
    */
 
   for (int i=0; i<NUM_MOTORS; i++) {
-    //Scaled to 125us - 250us for oneshot125 protocol
-    m_command_PWM[i] = m_command_scaled[i]*125 + 125;
-    //Constrain commands to motors within oneshot125 bounds
-    m_command_PWM[i] = constrain(m_command_PWM[i], 125, 250);
+    // The different ESC protocols use different ranges
+    // PWM ESCs
+    #if defined USE_MOTOR_PROTOCOL_PWM
+      m_command_PWM[i] = m_command_scaled[i] * 180;
+      m_command_PWM[i] = constrain(m_command_PWM[i], 0, 180);
+    #endif
+    //OneShot125 ESCs:
+    #if defined USE_MOTOR_PROTOCOL_ONESHOT
+      //Scaled to 125us - 250us for oneshot125 protocol
+      m_command_PWM[i] = m_command_scaled[i]*125 + 125;
+      //Constrain commands to motors within oneshot125 bounds
+      m_command_PWM[i] = constrain(m_command_PWM[i], 125, 250);
+    #endif
+    //DShot ESCs:
+    #if defined USE_MOTOR_PROTOCOL_DSHOT
+      // DShot has a "stop" command of 0.  Use that when disarmed
+      if (!armedFly) {
+        m_command_PWM[i] = 0;
+      }
+      else {
+        int dshot_scale = 2000 - DSHOT_MINTHROTTLE;
+        m_command_PWM[i] = m_command_scaled[i] * dshot_scale + (DSHOT_MINTHROTTLE + 48);
+        m_command_PWM[i] = constrain(m_command_PWM[i], DSHOT_MINTHROTTLE, 2047);
+      }
+    #endif
   }
 
   for (int i = 0; i < NUM_SERVOS; i++) {
@@ -681,7 +760,7 @@ void failSafe() {
    */
 
   //If using SBUS, this will only check the boolean failsafe value from the SBUS library.  If using PWM RX, it checks each channel.
-  #ifndef USE_SBUS_RX || USE_CRSF_RX
+  #if !defined(USE_SBUS_RX) && !defined(USE_CRSF_RX)
     unsigned minVal = 900;
     unsigned maxVal = 2100;
     int check[NUM_CHANNELS] = { 0 };
@@ -694,10 +773,9 @@ void failSafe() {
   #endif
 
   //If any failures, set to default failsafe values
-  #ifdef USE_SBUS_RX
+  #if defined USE_SBUS_RX
   if (sbusFailSafe) {
-  #endif
-  #ifdef USE_CRSF_RX
+  #elif defined USE_CRSF_RX
   if (crsfFailSafe) {
   #else
   // if somehow you got here w/o the receiver type defined, failsafe
@@ -709,100 +787,145 @@ void failSafe() {
   }
 }
 
-void initOneShot125() {
-  mcpwm_timer_handle_t timer_grp0 = NULL;
-  mcpwm_timer_handle_t timer_grp1 = NULL;
+void initMotors() {
+  // PWM-based ESCs:
+  #if defined USE_MOTOR_PROTOCOL_PWM
+    for (int i = 0; i < NUM_MOTORS; i++) {
+      // Compute duty cycle (in us) from Hz
+      int dutyCycle = 1000000 / motors[i].refresh;
+      
+      // Convert minUs and maxUs to 12-bit duty cycles and set to servo object
+      motors[i].minDuty = (motors[i].minUs * 4095) / dutyCycle;
+      motors[i].maxDuty = (motors[i].maxUs * 4095) / dutyCycle;
 
-  // Set motor pins for OUTPUT mode
-  for (int i = 0; i < NUM_MOTORS; i++) {
-    pinMode(motorPins[i], OUTPUT);
-  }
+      // ledcAttach(pin, frequency_hz, resolution_bits)
+      ledcAttach(motors[i].pin, motors[i].refresh, 12); 
 
-  // 1. Configure MCPWM Timer for Group 0 (Motors 0 to 5)
-  mcpwm_timer_config_t timer_config_0 = {};
-  timer_config_0.group_id = 0;
-  timer_config_0.clk_src = MCPWM_TIMER_CLK_SRC_DEFAULT;
-  timer_config_0.resolution_hz = 1000000; // 1 MHz tick = 1 us resolution
-  timer_config_0.count_mode = MCPWM_TIMER_COUNT_MODE_UP;
-  timer_config_0.period_ticks = 500;      // 500 us period (2 kHz update rate)
+      //Arm servo channels
+      writeServo(motors[i], motors[i].initAngle);
+    }
+  #endif
+  
+  // Initialization for OneShot125 Protocol
+  #if defined USE_MOTOR_PROTOCOL_ONESHOT
+    mcpwm_timer_handle_t timer_grp0 = NULL;
+    mcpwm_timer_handle_t timer_grp1 = NULL;
 
-  ESP_ERROR_CHECK(mcpwm_new_timer(&timer_config_0, &timer_grp0));
-
-  // 2. Configure MCPWM Timer for Group 1 (Motors 6 to 7+, if applicable)
-  mcpwm_timer_config_t timer_config_1 = {};
-  timer_config_1.group_id = 1;
-  timer_config_1.clk_src = MCPWM_TIMER_CLK_SRC_DEFAULT;
-  timer_config_1.resolution_hz = 1000000;
-  timer_config_1.count_mode = MCPWM_TIMER_COUNT_MODE_UP;
-  timer_config_1.period_ticks = 500;
-
-  if (NUM_MOTORS > 6) {
-    ESP_ERROR_CHECK(mcpwm_new_timer(&timer_config_1, &timer_grp1));
-  }
-
-  mcpwm_oper_handle_t current_oper = NULL;
-
-  // 3. Assign each motor pin to an MCPWM Operator & Generator
-  for (int i = 0; i < NUM_MOTORS; i++) {
-    int group_id = i / 6; // Group 0 for motors 0-5, Group 1 for motors 6-11
-    mcpwm_timer_handle_t current_timer = (group_id == 0) ? timer_grp0 : timer_grp1;
-
-    // Each MCPWM operator can handle up to 2 generator outputs
-    if (i % 2 == 0) {
-        mcpwm_operator_config_t oper_config = {};
-        oper_config.group_id = group_id;
-        ESP_ERROR_CHECK(mcpwm_new_operator(&oper_config, &current_oper));
-        ESP_ERROR_CHECK(mcpwm_operator_connect_timer(current_oper, current_timer));
+    // Set motor pins for OUTPUT mode
+    for (int i = 0; i < NUM_MOTORS; i++) {
+      pinMode(motors[i].pin, OUTPUT);
     }
 
-    // Configure pulse comparator (updates at zero to avoid glitches)
-    mcpwm_comparator_config_t cmpr_config = {};
-    cmpr_config.flags.update_cmp_on_tez = true;
-    ESP_ERROR_CHECK(mcpwm_new_comparator(current_oper, &cmpr_config, &comparators[i]));
+    // 1. Configure MCPWM Timer for Group 0 (Motors 0 to 5)
+    mcpwm_timer_config_t timer_config_0 = {};
+    timer_config_0.group_id = 0;
+    timer_config_0.clk_src = MCPWM_TIMER_CLK_SRC_DEFAULT;
+    timer_config_0.resolution_hz = 1000000; // 1 MHz tick = 1 us resolution
+    timer_config_0.count_mode = MCPWM_TIMER_COUNT_MODE_UP;
+    timer_config_0.period_ticks = 500;      // 500 us period (2 kHz update rate)
 
-    // Attach generator output to the motor pin
-    mcpwm_generator_config_t gen_config = {};
-    gen_config.gen_gpio_num = (gpio_num_t)motorPins[i];
+    ESP_ERROR_CHECK(mcpwm_new_timer(&timer_config_0, &timer_grp0));
 
-    mcpwm_gen_handle_t generator = NULL;
-    ESP_ERROR_CHECK(mcpwm_new_generator(current_oper, &gen_config, &generator));
+    // 2. Configure MCPWM Timer for Group 1 (Motors 6 to 7+, if applicable)
+    mcpwm_timer_config_t timer_config_1 = {};
+    timer_config_1.group_id = 1;
+    timer_config_1.clk_src = MCPWM_TIMER_CLK_SRC_DEFAULT;
+    timer_config_1.resolution_hz = 1000000;
+    timer_config_1.count_mode = MCPWM_TIMER_COUNT_MODE_UP;
+    timer_config_1.period_ticks = 500;
 
-    // Signal Logic: Drive HIGH at period start (0), Drive LOW when comparator match occurs
-    ESP_ERROR_CHECK(mcpwm_generator_set_actions_on_timer_event(generator,
-        MCPWM_GEN_TIMER_EVENT_ACTION(MCPWM_TIMER_DIRECTION_UP, MCPWM_TIMER_EVENT_EMPTY, MCPWM_GEN_ACTION_HIGH),
-        MCPWM_GEN_TIMER_EVENT_ACTION_END()));
-    
-    ESP_ERROR_CHECK(mcpwm_generator_set_actions_on_compare_event(generator,
-        MCPWM_GEN_COMPARE_EVENT_ACTION(MCPWM_TIMER_DIRECTION_UP, comparators[i], MCPWM_GEN_ACTION_LOW),
-        MCPWM_GEN_COMPARE_EVENT_ACTION_END()));
+    if (NUM_MOTORS > 6) {
+      ESP_ERROR_CHECK(mcpwm_new_timer(&timer_config_1, &timer_grp1));
+    }
 
-    // Default state: 125 us idle signal
-    mcpwm_comparator_set_compare_value(comparators[i], ONESHOT125_MIN_US);
-  }
+    mcpwm_oper_handle_t current_oper = NULL;
 
-  // 4. Start MCPWM timers
-  ESP_ERROR_CHECK(mcpwm_timer_enable(timer_grp0));
-  ESP_ERROR_CHECK(mcpwm_timer_start_stop(timer_grp0, MCPWM_TIMER_START_NO_STOP));
+    // 3. Assign each motor pin to an MCPWM Operator & Generator
+    for (int i = 0; i < NUM_MOTORS; i++) {
+      int group_id = i / 6; // Group 0 for motors 0-5, Group 1 for motors 6-11
+      mcpwm_timer_handle_t current_timer = (group_id == 0) ? timer_grp0 : timer_grp1;
 
-  if (NUM_MOTORS > 6) {
-    ESP_ERROR_CHECK(mcpwm_timer_enable(timer_grp1));
-    ESP_ERROR_CHECK(mcpwm_timer_start_stop(timer_grp1, MCPWM_TIMER_START_NO_STOP));
-  }
+      // Each MCPWM operator can handle up to 2 generator outputs
+      if (i % 2 == 0) {
+          mcpwm_operator_config_t oper_config = {};
+          oper_config.group_id = group_id;
+          ESP_ERROR_CHECK(mcpwm_new_operator(&oper_config, &current_oper));
+          ESP_ERROR_CHECK(mcpwm_operator_connect_timer(current_oper, current_timer));
+      }
+
+      // Configure pulse comparator (updates at zero to avoid glitches)
+      mcpwm_comparator_config_t cmpr_config = {};
+      cmpr_config.flags.update_cmp_on_tez = true;
+      ESP_ERROR_CHECK(mcpwm_new_comparator(current_oper, &cmpr_config, &comparators[i]));
+
+      // Attach generator output to the motor pin
+      mcpwm_generator_config_t gen_config = {};
+      gen_config.gen_gpio_num = (gpio_num_t)motors[i].pin;
+
+      mcpwm_gen_handle_t generator = NULL;
+      ESP_ERROR_CHECK(mcpwm_new_generator(current_oper, &gen_config, &generator));
+
+      // Signal Logic: Drive HIGH at period start (0), Drive LOW when comparator match occurs
+      ESP_ERROR_CHECK(mcpwm_generator_set_actions_on_timer_event(generator,
+          MCPWM_GEN_TIMER_EVENT_ACTION(MCPWM_TIMER_DIRECTION_UP, MCPWM_TIMER_EVENT_EMPTY, MCPWM_GEN_ACTION_HIGH),
+          MCPWM_GEN_TIMER_EVENT_ACTION_END()));
+      
+      ESP_ERROR_CHECK(mcpwm_generator_set_actions_on_compare_event(generator,
+          MCPWM_GEN_COMPARE_EVENT_ACTION(MCPWM_TIMER_DIRECTION_UP, comparators[i], MCPWM_GEN_ACTION_LOW),
+          MCPWM_GEN_COMPARE_EVENT_ACTION_END()));
+
+      // Default state: 125 us idle signal
+      mcpwm_comparator_set_compare_value(comparators[i], ONESHOT125_MIN_US);
+    }
+
+    // 4. Start MCPWM timers
+    ESP_ERROR_CHECK(mcpwm_timer_enable(timer_grp0));
+    ESP_ERROR_CHECK(mcpwm_timer_start_stop(timer_grp0, MCPWM_TIMER_START_NO_STOP));
+
+    if (NUM_MOTORS > 6) {
+      ESP_ERROR_CHECK(mcpwm_timer_enable(timer_grp1));
+      ESP_ERROR_CHECK(mcpwm_timer_start_stop(timer_grp1, MCPWM_TIMER_START_NO_STOP));
+    }
+  #endif
+
+  // DShot ESC Protocol
+  #if defined USE_MOTOR_PROTOCOL_DSHOT
+    for (int i = 0; i < NUM_MOTORS; i++) {
+      dshot_motors[i] = new DShotRMT(motors[i].pin, DSHOT_MODE, false);
+      dshot_result_t dshot_result = dshot_motors[i]->begin();
+      printDShotResult(dshot_result);
+    }
+  #endif
 }
 
 
 void commandMotors() {
+  // Loop over the motors and send the output commands
   for (int i = 0; i < NUM_MOTORS; i++) {
-    uint32_t pulse_us;
+    // For PWM ESCs
+    #if defined USE_MOTOR_PROTOCOL_PWM
+      writeServo(motors[i], m_command_PWM[i]);
+    #endif
 
-    if (!armedFly) {
-      pulse_us = ONESHOT125_MIN_US;
-    } else {
-      pulse_us = constrain(m_command_PWM[i], ONESHOT125_MIN_US, ONESHOT125_MAX_US);
-    }
+    // For OneShot ESCs
+    #if defined USE_MOTOR_PROTOCOL_ONESHOT
+      uint32_t pulse_us;
 
-    // Update hardware compare register instantly
-    mcpwm_comparator_set_compare_value(comparators[i], pulse_us);
+      if (!armedFly) {
+        pulse_us = ONESHOT125_MIN_US;
+      } else {
+        pulse_us = constrain(m_command_PWM[i], ONESHOT125_MIN_US, ONESHOT125_MAX_US);
+      }
+
+      // Update hardware compare register instantly
+      mcpwm_comparator_set_compare_value(comparators[i], pulse_us);
+    #endif
+
+    // For DShot ESCs
+    #if defined USE_MOTOR_PROTOCOL_DSHOT
+      dshot_result_t dshot_result = dshot_motors[i]->sendThrottle(m_command_PWM[i]);
+      // printDShotResult(dshot_result);
+    #endif
   }
 }
 
@@ -818,7 +941,11 @@ void armMotors() {
 
   // Set motor command to minimum throttle (arming0)
   for (int i=0; i<NUM_MOTORS; i++) {
-    m_command_PWM[i] = 125;
+    #if defined(USE_MOTOR_PROTOCOL_PWM) || defined(USE_MOTOR_PROTOCOL_DSHOT)
+      m_command_PWM[i] = 0;
+    #else //Oneshot125
+      m_command_PWM[i] = 125;
+    #endif
   }
 
   // Loop through and send pulses to arm
@@ -871,9 +998,7 @@ void calibrateESCs() {
       //throttleCut(); //Directly sets motor commands to low based on state of ch5
       
       // Send the outputs to servos/motors
-      for (int i=0; i<NUM_SERVOS; i++) {
-        writeServo(servos[i], s_command_PWM[i]);
-      }
+      commandServos(); //Sends command pulses to each servo pin using PWM protocol
       commandMotors(); //Sends command pulses to each motor pin using OneShot125 protocol
       
       // Print the radio data as a guide that something is happening
@@ -966,13 +1091,21 @@ void throttleCut() {
   if ((channel_pwm[4] > 1500) || (armedFly == false)) {
     armedFly = false;
     for (int i=0; i<NUM_MOTORS; i++) {
-       m_command_PWM[i] = 120;
+      // the values for the motor commands are different if they are PWM, OneShot, or DShot ESCs:
+      #if defined(USE_MOTOR_PROTOCOL_PWM) || defined(USE_MOTOR_PROTOCOL_DSHOT)
+        m_command_PWM[i] = 0;
+      #else //Oneshot125
+        m_command_PWM[i] = 120;
+      #endif        
     }
+  }
+}
 
-    // Uncomment if using servo PWM variables to control motor ESCs
-    for (int i=0; i<NUM_SERVOS; i++) {
-      s_command_PWM[i] = 0;  
-    }
+
+// Loop over the servos and send the commands
+void commandServos() {
+  for (int i=0; i<NUM_SERVOS; i++) {
+    writeServo(servos[i], s_command_PWM[i]);
   }
 }
 
@@ -1006,6 +1139,15 @@ void initServos() {
     writeServo(servos[i], servos[i].initAngle);
   }
 }
+
+
+
+
+
+
+
+
+
 
 
 
