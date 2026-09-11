@@ -183,7 +183,7 @@ const char index_html[] PROGMEM = R"rawliteral(
     </div>
     <div class="slider-group">
       <div class="slider-label">D-Gain: <span id="val-d">0.200</span></div>
-      <input type="range" id="slider-d" min="0" max="0.05" step="0.0001" oninput="updateValues()">
+      <input type="range" id="slider-d" min="0" max="0.20" step="0.0001" oninput="updateValues()">
     </div>
   </div>
 
@@ -268,8 +268,8 @@ const char index_html[] PROGMEM = R"rawliteral(
       dSlider.step = 0.01;
     } else {
       dSlider.min = 0;
-      dSlider.max = 0.05;
-      dSlider.step = 0.0001;
+      dSlider.max = 0.50;
+      dSlider.step = 0.001;
     }
 
     document.getElementById('slider-p').value = g.p;

@@ -95,7 +95,7 @@ const char* password = "tuningpassword";
   // BiDirectional DShot Support (default: false)
   #define DSHOT_TELEM false
   // Set the throttle minimum for DSHOT (airmode)
-  #define DSHOT_MINTHROTTLE 150
+  #define DSHOT_MINTHROTTLE 200
 #endif
 
 
@@ -105,11 +105,14 @@ const char* password = "tuningpassword";
 
 
 #if defined USE_SBUS_RX
-  #include "src/SBUS/SBUS.h"
+  #include <sbus.h>
   #define SBUS_RX_PIN 18
 
-  SBUS sbus(Serial2);
-  uint16_t sbusChannels[16];
+  // Modern Bolder Flight Systems SBUS library (v8.1.4). Its ESP32
+  // constructor takes the RX pin (and inversion) directly, so a single
+  // sbus.Begin() call configures the UART correctly -- no more need for
+  // a separate manual Serial2.begin() call after the library's own.
+  bfs::SbusRx sbus(&Serial2, SBUS_RX_PIN, -1, true);
   bool sbusFailSafe;
   bool sbusLostFrame;
 #endif
@@ -196,13 +199,13 @@ const float DEFAULT_KI_YAW_RATE = 0.05;
 const float DEFAULT_KD_YAW_RATE = 0.00015;
 
 // ANGLE MODE defaults
-const float DEFAULT_KP_ROLL_ANGLE = 0.20;
-const float DEFAULT_KI_ROLL_ANGLE = 0.01;
-const float DEFAULT_KD_ROLL_ANGLE = 0.05;
+const float DEFAULT_KP_ROLL_ANGLE = 0.50;   // 0.2
+const float DEFAULT_KI_ROLL_ANGLE = 0.60;   // 0.3
+const float DEFAULT_KD_ROLL_ANGLE = 0.15;   // 0.05
 
-const float DEFAULT_KP_PITCH_ANGLE = 0.20;
-const float DEFAULT_KI_PITCH_ANGLE = 0.01;
-const float DEFAULT_KD_PITCH_ANGLE = 0.05;
+const float DEFAULT_KP_PITCH_ANGLE = 0.50;
+const float DEFAULT_KI_PITCH_ANGLE = 0.60;
+const float DEFAULT_KD_PITCH_ANGLE = 0.15;
 
 const float DEFAULT_KP_YAW_ANGLE = 0.30; // Yaw uses rate stabilization even in angle mode
 const float DEFAULT_KI_YAW_ANGLE = 0.05;
@@ -410,12 +413,12 @@ void flightTask(void *pvParameters) {
     loopBlink(); //Indicate we are in main loop with short blink every 1.5 seconds
 
     //Print data at 100hz (uncomment one at a time for troubleshooting) - SELECT ONE:
-    printRadioData();     //Prints radio pwm values (expected: 1000 to 2000)
+    //printRadioData();     //Prints radio pwm values (expected: 1000 to 2000)
     //printDesiredState();  //Prints desired vehicle state commanded in either degrees or deg/sec (expected: +/- maxAXIS for roll, pitch, yaw; 0 to 1 for throttle)
     //printGyroData();      //Prints filtered gyro data direct from IMU (expected: ~ -250 to 250, 0 at rest)
     //printAccelData();     //Prints filtered accelerometer data direct from IMU (expected: ~ -2 to 2; x,y 0 when level, z 1 when level)
     //printMagData();       //Prints filtered magnetometer data direct from IMU (expected: ~ -300 to 300)
-    //printRollPitchYaw();  //Prints roll, pitch, and yaw angles in degrees from Madgwick filter (expected: degrees, 0 when level)
+    printRollPitchYaw();  //Prints roll, pitch, and yaw angles in degrees from Madgwick filter (expected: degrees, 0 when level)
     //printPIDoutput();     //Prints computed stabilized PID variables from controller and desired setpoint (expected: ~ -1 to 1)
     //printMotorCommands(); //Prints the values being written to the motors (expected: 120 to 250)
     //printServoCommands(); //Prints the values being written to the servos (expected: 0 to 180)
@@ -438,10 +441,12 @@ void flightTask(void *pvParameters) {
     //controlANGLE2(); //Stabilize on angle setpoint using cascaded method. Rate controller must be tuned well first!
     //controlRATE(); //Stabilize on rate setpoint
     // OR use a mode switch to select the mode:
-    if (channel_pwm[5] > 1800) {
-      controlRATE();
-    } else {
+    if (channel_pwm[5] > 900 && channel_pwm[5] < 1200) {
+      controlANGLE2();
+    } else if (channel_pwm[5] < 1800 && channel_pwm[5] > 1200) {
       controlANGLE();
+    } else  {
+      controlRATE();
     }
 
 
@@ -512,7 +517,7 @@ void setup() {
     // Enable these as needed to calibrate the craft.  Execution stops after each one of these, so use one at a time and comment them out after setup is completed.
 
     // 1) Get IMU error to zero accelerometer and gyro readings, assuming vehicle is level when powered up
-    // calculate_IMU_error(); //Calibration parameters printed to serial monitor. Paste these in the user specified variables section, then comment this out forever.
+    //calculate_IMU_error(); //Calibration parameters printed to serial monitor. Paste these in the user specified variables section, then comment this out forever.
 
     // 2) If using MPU9250 IMU, uncomment for one-time magnetometer calibration (may need to repeat for new locations)
     // calibrateMagnetometer(); //Generates magentometer error and scale factors to be pasted in user-specified variables section
@@ -699,12 +704,15 @@ void getCommands() {
     // }
     
   #elif defined USE_SBUS_RX
-    if (sbus.read(&sbusChannels[0], &sbusFailSafe, &sbusLostFrame)) {
+    if (sbus.Read()) {
+      bfs::SbusData sbusData = sbus.data();
+      sbusFailSafe = sbusData.failsafe;
+      sbusLostFrame = sbusData.lost_frame;
       //sBus scaling below is for Taranis-Plus and X4R-SB
       float scale = 0.615;  
       float bias  = 895.0; 
       for (int i = 0; i < NUM_CHANNELS; i++) {
-        channel_pwm[i] = sbusChannels[i] * scale + bias;
+        channel_pwm[i] = sbusData.ch[i] * scale + bias;
       }
     }
 

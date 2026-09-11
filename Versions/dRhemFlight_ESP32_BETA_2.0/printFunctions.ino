@@ -98,8 +98,8 @@ void printRollPitchYaw() {
   if (now - print_counter >= 10000) { 
     print_counter = now;
     if (dt > 0.0f) {
-      Serial.print(F("LOW:-180.0"));
-      Serial.print(F(" HIGH:180.0"));
+      Serial.print(F("LOW:-90.0"));
+      Serial.print(F(" HIGH:90.0"));
       Serial.print(F(" roll:"));
       Serial.print(roll_IMU);
       Serial.print(F(" pitch:"));

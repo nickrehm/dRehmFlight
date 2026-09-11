@@ -120,7 +120,7 @@
 #endif
 
 //Filter parameters - Defaults tuned for 2kHz loop rate; Do not touch unless you know what you are doing:
-const float B_madgwick = 0.04;  //Madgwick filter parameter
+const float B_madgwick = 0.08;  //Madgwick filter parameter. (originally 0.04)
 const float B_accel = 0.14;     //Accelerometer LP filter paramter, (MPU6050 default: 0.14. MPU9250 default: 0.2)
 const float B_gyro = 0.1;       //Gyro LP filter paramter, (MPU6050 default: 0.1. MPU9250 default: 0.17)
 const float B_mag = 1.0;        //Magnetometer LP filter parameter
@@ -146,12 +146,13 @@ const float B_loop_pitch = 0.9;     //Pitch damping term for controlANGLE2(), lo
 
 
 //IMU calibration parameters - calibrate IMU using calculate_IMU_error() in the void setup() to get these values, then comment out calculate_IMU_error()
-float AccErrorX = -0.00;
-float AccErrorY = 0.02;
+float AccErrorX = -0.06;
+float AccErrorY = 0.04;
 float AccErrorZ = 0.03;
-float GyroErrorX = -0.05;
-float GyroErrorY = -0.10;
-float GyroErrorZ = -0.39;
+float GyroErrorX = -0.04;
+float GyroErrorY = -0.21;
+float GyroErrorZ = -0.22;
+
 
 
 //IMU:
@@ -836,6 +837,7 @@ void controlANGLE2() {
   }
   integral_roll_il = constrain(integral_roll_il, -i_limit, i_limit); //Saturate integrator to prevent unsafe buildup
   derivative_roll = (error_roll - error_roll_prev)/dt; 
+  derivative_roll = filterDterm(derivative_roll, derivative_roll_filt); //Low-pass the D-term to tame differentiated sensor noise
   roll_PID = .01*(Kp_roll_rate*error_roll + Ki_roll_rate*integral_roll_il + Kd_roll_rate*derivative_roll); //Scaled by .01 to bring within -1 to 1 range
 
   //Pitch
@@ -846,6 +848,7 @@ void controlANGLE2() {
   }
   integral_pitch_il = constrain(integral_pitch_il, -i_limit, i_limit); //Saturate integrator to prevent unsafe buildup
   derivative_pitch = (error_pitch - error_pitch_prev)/dt; 
+  derivative_pitch = filterDterm(derivative_pitch, derivative_pitch_filt); //Low-pass the D-term to tame differentiated sensor noise
   pitch_PID = .01*(Kp_pitch_rate*error_pitch + Ki_pitch_rate*integral_pitch_il + Kd_pitch_rate*derivative_pitch); //Scaled by .01 to bring within -1 to 1 range
   
   //Yaw
@@ -856,6 +859,7 @@ void controlANGLE2() {
   }
   integral_yaw = constrain(integral_yaw, -i_limit, i_limit); //Saturate integrator to prevent unsafe buildup
   derivative_yaw = (error_yaw - error_yaw_prev)/dt; 
+  derivative_yaw = filterDterm(derivative_yaw, derivative_yaw_filt); //Low-pass the D-term to tame differentiated sensor noise
   yaw_PID = .01*(Kp_yaw*error_yaw + Ki_yaw*integral_yaw + Kd_yaw*derivative_yaw); //Scaled by .01 to bring within -1 to 1 range
   
   //Update roll variables

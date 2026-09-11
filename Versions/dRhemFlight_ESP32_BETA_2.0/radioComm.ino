@@ -45,9 +45,10 @@ void radioSetup() {
     #error PWM RX is deprecated.
   //SBUS Recevier 
   #elif defined USE_SBUS_RX
-    // SBUS standard settings: 100000 baud, SERIAL_8E2
-    sbus.begin();
-    Serial2.begin(100000, SERIAL_8E2, SBUS_RX_PIN, -1, true); 
+    // SBUS standard settings: 100000 baud, SERIAL_8E2 -- pins and signal
+    // inversion are passed to the sbus object's constructor, so Begin()
+    // alone configures Serial2 correctly.
+    sbus.Begin();
 
   //DSM receiver
   #elif defined USE_DSM_RX
