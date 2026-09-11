@@ -1,0 +1,59 @@
+#######################################
+# Syntax Coloring Map ArduinoLog library
+#######################################
+
+#######################################
+#	Instances	(KEYWORD1)
+#######################################
+IMU_Wrapper         KEYWORD1
+
+#######################################
+#	Datatypes	(KEYWORD1)
+#######################################
+
+#######################################
+#	Methods	and	Functions	(KEYWORD2)
+####################################### 
+begin                   KEYWORD2
+setSPIpins              KEYWORD2
+getIMUdata              KEYWORD2
+calculate_IMU_error     KEYWORD2
+calibrateMagnetometer   KEYWORD2
+
+controlANGLE            KEYWORD2
+controlANGLE2           KEYWORD2
+controlRATE             KEYWORD2
+
+Madgwick                KEYWORD2
+Madgwick6DOF            KEYWORD2
+
+setMagError             KEYWORD2
+setMagScale             KEYWORD2
+setAccError             KEYWORD2
+setGyroError            KEYWORD2
+
+setRollAnglePID         KEYWORD2
+setPitchAnglePID        KEYWORD2
+	
+setRollRatePID          KEYWORD2
+setPitchRatePID         KEYWORD2
+setYawRatePID           KEYWORD2
+
+getGyro                 KEYWORD2
+getAccel                KEYWORD2
+getMag                  KEYWORD2
+
+
+#######################################
+#	Instances	(KEYWORD2)
+#######################################
+#Logging	KEYWORD2
+#Log	KEYWORD2
+
+#######################################
+#	Constants	(LITERAL1)
+#######################################
+GYRO_SCALE      	LITERAL1	Constants
+GYRO_SCALE_FACTOR	LITERAL1	Constants
+ACCEL_SCALE     	LITERAL1	Constants
+ACCEL_SCALE_FACTOR	LITERAL1	Constants

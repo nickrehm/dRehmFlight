@@ -168,12 +168,13 @@ float MagScaleY = 1.0;
 float MagScaleZ = 1.0;
 
 //IMU calibration parameters - calibrate IMU using calculate_IMU_error() in the void setup() to get these values, then comment out calculate_IMU_error()
-float AccErrorX = 0.0;
-float AccErrorY = 0.0;
-float AccErrorZ = 0.0;
-float GyroErrorX = 0.0;
-float GyroErrorY= 0.0;
-float GyroErrorZ = 0.0;
+float AccErrorX = 0.00;
+float AccErrorY = 0.01;
+float AccErrorZ = -0.05;
+float GyroErrorX = -0.40;
+float GyroErrorY = 0.55;
+float GyroErrorZ = -0.58;
+
 
 //Controller parameters (take note of defaults before modifying!): 
 float i_limit = 25.0;     //Integrator saturation level, mostly for safety (default 25.0)
@@ -400,7 +401,7 @@ void loop() {
   //printGyroData();      //Prints filtered gyro data direct from IMU (expected: ~ -250 to 250, 0 at rest)
   //printAccelData();     //Prints filtered accelerometer data direct from IMU (expected: ~ -2 to 2; x,y 0 when level, z 1 when level)
   //printMagData();       //Prints filtered magnetometer data direct from IMU (expected: ~ -300 to 300)
-  //printRollPitchYaw();  //Prints roll, pitch, and yaw angles in degrees from Madgwick filter (expected: degrees, 0 when level)
+  printRollPitchYaw();  //Prints roll, pitch, and yaw angles in degrees from Madgwick filter (expected: degrees, 0 when level)
   //printPIDoutput();     //Prints computed stabilized PID variables from controller and desired setpoint (expected: ~ -1 to 1)
   //printMotorCommands(); //Prints the values being written to the motors (expected: 120 to 250)
   //printServoCommands(); //Prints the values being written to the servos (expected: 0 to 180)
@@ -1605,7 +1606,9 @@ void printDesiredState() {
 void printGyroData() {
   if (current_time - print_counter > 10000) {
     print_counter = micros();
-    Serial.print(F("GyroX:"));
+    Serial.print(F("LOW:-300.0"));
+    Serial.print(F(" HIGH:300.0"));
+    Serial.print(F(" GyroX:"));
     Serial.print(GyroX);
     Serial.print(F(" GyroY:"));
     Serial.print(GyroY);
@@ -1617,7 +1620,9 @@ void printGyroData() {
 void printAccelData() {
   if (current_time - print_counter > 10000) {
     print_counter = micros();
-    Serial.print(F("AccX:"));
+    Serial.print(F("LOW:-2.0"));
+    Serial.print(F(" HIGH:2.0"));
+    Serial.print(F(" AccX:"));
     Serial.print(AccX);
     Serial.print(F(" AccY:"));
     Serial.print(AccY);
@@ -1641,7 +1646,9 @@ void printMagData() {
 void printRollPitchYaw() {
   if (current_time - print_counter > 10000) {
     print_counter = micros();
-    Serial.print(F("roll:"));
+    Serial.print(F("LOW:-180.0"));
+    Serial.print(F(" HIGH:180.0"));
+    Serial.print(F(" roll:"));
     Serial.print(roll_IMU);
     Serial.print(F(" pitch:"));
     Serial.print(pitch_IMU);
@@ -1653,7 +1660,9 @@ void printRollPitchYaw() {
 void printPIDoutput() {
   if (current_time - print_counter > 10000) {
     print_counter = micros();
-    Serial.print(F("roll_PID:"));
+    Serial.print(F("LOW:-1.0"));
+    Serial.print(F(" HIGH:1.0"));
+    Serial.print(F(" roll_PID:"));
     Serial.print(roll_PID);
     Serial.print(F(" pitch_PID:"));
     Serial.print(pitch_PID);
